@@ -8,6 +8,8 @@
 import Foundation
 import Network
 
+// MARK: - Extensions
+
 extension URLRequest {
     init(url: URL,
          cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy,

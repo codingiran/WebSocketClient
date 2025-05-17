@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// A simple enum representing the state of a WebSocket connection.
 public enum WebSocketState: Sendable {
     case connecting
     case connected
