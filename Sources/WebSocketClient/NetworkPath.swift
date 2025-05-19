@@ -12,42 +12,55 @@ import Network
 /// It provides an asynchronous stream of `NWPath` updates.
 /// This class is designed to be used in an actor context to ensure thread safety.
 public actor NetworkPath {
-    private let networkMonitor: NWPathMonitor
-    private var networkPath: NWPath
-    private var continuation: AsyncStream<NWPath>.Continuation?
+    public typealias PathUpdateHandler = @Sendable (Network.NWPath) async -> Void
 
-    public init(pathMonitor: NWPathMonitor = .init(),
-         queue: DispatchQueue = .init(label: "com.websocketClient.pathMonitor.\(UUID())"))
-    {
-        networkMonitor = pathMonitor
-        networkPath = networkMonitor.currentPath
+    private let monitorQueue: DispatchQueue
+
+    private var networkPathUpdater: PathUpdateHandler?
+
+    private let networkMonitor: NWPathMonitor = .init()
+
+    /// A Boolean value that indicates whether the network path is valid.
+    public var isValid: Bool = false
+
+    public private(set) var currentPath: NWPath
+
+    public init(queue: DispatchQueue = .init(label: "com.websocketClient.pathMonitor.\(UUID())")) {
+        monitorQueue = queue
+        currentPath = networkMonitor.currentPath
         networkMonitor.pathUpdateHandler = { [weak self] path in
             guard let self = self else { return }
-            Task { await self.setNetworkPath(path) }
+            Task { await self.updateNetworkPath(path) }
         }
-        networkMonitor.start(queue: queue)
     }
-   
-    private func setNetworkPath(_ path: NWPath) {
-        networkPath = path
-        continuation?.yield(path)
+
+    private func updateNetworkPath(_ path: NWPath) async {
+        currentPath = path
+        await networkPathUpdater?(path)
     }
 }
 
 // MARK: - Public API
 
 public extension NetworkPath {
+    /// Starts monitoring the network path.
+    func fire() {
+        networkMonitor.start(queue: monitorQueue)
+        isValid = true
+    }
+
+    /// Stops monitoring the network path.
+    func invalidate() {
+        networkMonitor.cancel()
+        isValid = false
+    }
+
     /// A Boolean value indicating whether the network path is satisfied.
     var isSatisfied: Bool {
-        networkPath.isSatisfied
+        currentPath.isSatisfied
     }
 
-    /// A method that returns an asynchronous stream of network path changes.
-    func networkPathChanges() -> AsyncStream<NWPath> {
-        return AsyncStream { continuation in
-            self.continuation = continuation
-            continuation.yield(self.networkPath)
-        }
+    func pathOnChange(_ handler: @escaping PathUpdateHandler) {
+        networkPathUpdater = handler
     }
-
 }

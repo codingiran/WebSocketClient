@@ -8,7 +8,7 @@
 import Foundation
 
 /// A simple repeating timer that runs a task at a specified interval.
-final actor AsyncRepeatingTimer {
+final actor AsyncTimer {
     // MARK: - Properties
 
     /// Repeating task handler
@@ -26,6 +26,9 @@ final actor AsyncRepeatingTimer {
     /// The priority of the task.
     private let priority: TaskPriority
 
+    /// Whether the timer should repeat.
+    private let repeating: Bool
+
     /// Whether the timer should fire immediately upon starting.
     private let firesImmediately: Bool
 
@@ -39,12 +42,14 @@ final actor AsyncRepeatingTimer {
     /// - Parameters:
     ///   - interval: The interval at which the timer fires.
     ///   - priority: The priority of the task. Default is `.medium`.
-    ///   - firesImmediately: Whether the timer should fire immediately upon starting. Default is `true`.
+    ///   - repeating: Whether the timer should repeat. Default is `false`.
+    ///   - firesImmediately: Whether the timer should fire immediately upon starting. Default is `true`. It is only effective when `repeating` is `true`.
     ///   - handler: The handler that is called when the timer fires.
     ///   - cancelHandler: The handler that is called when the timer is cancelled.
     /// - Returns: A new `AsyncRepeatingTimer` instance.
     init(interval: TimeInterval,
          priority: TaskPriority = .medium,
+         repeating: Bool = false,
          firesImmediately: Bool = true,
          handler: @escaping RepeatHandler,
          cancelHandler: CancelHandler? = nil)
@@ -52,6 +57,7 @@ final actor AsyncRepeatingTimer {
         self.interval = interval
         self.priority = priority
         self.firesImmediately = firesImmediately
+        self.repeating = repeating
         self.handler = handler
         self.cancelHandler = cancelHandler
     }
@@ -61,13 +67,21 @@ final actor AsyncRepeatingTimer {
     func start() {
         stop()
         task = Task(priority: priority) {
+            guard repeating else {
+                // one-time timer
+                try await self.delay(interval)
+                await self.handler()
+                return
+            }
+
+            // repeating timer
             if !firesImmediately {
-                try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                try await self.delay(interval)
             }
             do {
                 while !Task.isCancelled {
-                    await self.handler() 
-                    try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                    await self.handler()
+                    try await self.delay(interval)
                 }
             } catch is CancellationError {
                 await cancelHandler?()
@@ -77,8 +91,9 @@ final actor AsyncRepeatingTimer {
 
     /// Stops the timer.
     func stop() {
-        task?.cancel()
-        task = nil
+        guard let task else { return }
+        task.cancel()
+        self.task = nil
     }
 
     /// Restarts the timer.
@@ -93,5 +108,10 @@ final actor AsyncRepeatingTimer {
     func setInterval(_ newInterval: TimeInterval) {
         interval = newInterval
         restart()
+    }
+
+    /// Delays the timer by the specified interval.
+    private func delay(_ interval: TimeInterval) async throws {
+        try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
     }
 }
