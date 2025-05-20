@@ -1,5 +1,5 @@
 //
-//  WebSocketReconnectStrategy.swift
+//  ReconnectStrategy.swift
 //  WebSocketClient
 //
 //  Created by CodingIran on 2025/5/19.
@@ -27,6 +27,9 @@ public extension WebSocketClient {
         func shouldReconnectWhenNetworkRecovered(webSocket: WebSocketClient, networkPath: NWPath) async -> Bool
 
         /// Whether to reconnect when receiving specific websocket event
+        /// - Parameters:
+        /// - webSocket: The WebSocketClient instance
+        /// - event: The websocket event
         func shouldReconnectWhenReceivingEvent(webSocket: WebSocketClient, event: WebSocketClient.Event) async -> Bool
     }
 
@@ -36,35 +39,28 @@ public extension WebSocketClient {
     static let defaultReconnectStrategy = ExponentialReconnectStrategy(exponentialBackoffBase: 2, exponentialBackoffScale: 0.5)
 }
 
+// MARK: - Default implementation
+
 public extension WebSocketClient.ReconnectStrategy {
-    func shouldReconnectWhenNetworkRecovered(webSocket: WebSocketClient, networkPath: NWPath) async -> Bool {
-        return true
+    func shouldReconnectWhenNetworkRecovered(webSocket _: WebSocketClient, networkPath: NWPath) async -> Bool {
+        networkPath.isSatisfied
     }
 
-    func shouldReconnectWhenReceivingEvent(webSocket: WebSocketClient, event: WebSocketClient.Event) async -> Bool {
-        switch event {
-        case .error, .cancelled:
-            return true
-        case .reconnectSuggested(let suggested):
-            return suggested
-        default:
-            return false
-        }
+    func shouldReconnectWhenReceivingEvent(webSocket _: WebSocketClient, event: WebSocketClient.Event) async -> Bool {
+        event.isReconnectSuggested
     }
 }
 
-// MARK: - Below are some common reconnection strategies for reference, and they can also be implemented according to business needs.
+// MARK: - Pre established strategy
 
 public extension WebSocketClient {
     /// No  reconnection
     struct NoReconnectStrategy: ReconnectStrategy, Sendable {
-        public func reconnectDelay(webSocket: WebSocketClient, reconnectReason: WebSocketClient.ReconnectReason, reconnectCount: UInt, networkPath: NWPath) async -> TimeInterval {
-            return 0
-        }
+        public func reconnectDelay(webSocket _: WebSocketClient, reconnectReason _: WebSocketClient.ReconnectReason, reconnectCount _: UInt, networkPath _: NWPath) async -> TimeInterval { 0 }
 
-        public func shouldReconnectWhenNetworkRecovered(webSocket: WebSocketClient, networkPath: NWPath) async -> Bool {
-            return true
-        }
+        public func shouldReconnectWhenNetworkRecovered(webSocket _: WebSocketClient, networkPath _: NWPath) async -> Bool { false }
+
+        public func shouldReconnectWhenReceivingEvent(webSocket _: WebSocketClient, event _: WebSocketClient.Event) async -> Bool { false }
     }
 
     /// Exponential Backoff
@@ -72,23 +68,20 @@ public extension WebSocketClient {
         private let exponentialBackoffBase: UInt
         private let exponentialBackoffScale: Double
         private let maxRetryCount: UInt
+        private let maxRetryInterval: TimeInterval
 
-        public init(exponentialBackoffBase: UInt, exponentialBackoffScale: Double, maxRetryCount: UInt = .max) {
+        public init(exponentialBackoffBase: UInt, exponentialBackoffScale: Double, maxRetryCount: UInt = .max, maxRetryInterval: TimeInterval = 10 * 60) {
             self.exponentialBackoffBase = exponentialBackoffBase
             self.exponentialBackoffScale = exponentialBackoffScale
             self.maxRetryCount = maxRetryCount
+            self.maxRetryInterval = maxRetryInterval
         }
 
-        public init(exponentialBackoffBase: UInt, exponentialBackoffScale: Double) {
-            self.exponentialBackoffBase = exponentialBackoffBase
-            self.exponentialBackoffScale = exponentialBackoffScale
-            self.maxRetryCount = .max
-        }
-
-        public func reconnectDelay(webSocket: WebSocketClient, reconnectReason: WebSocketClient.ReconnectReason, reconnectCount: UInt, networkPath: NWPath) async -> TimeInterval {
+        public func reconnectDelay(webSocket _: WebSocketClient, reconnectReason _: WebSocketClient.ReconnectReason, reconnectCount: UInt, networkPath: NWPath) async -> TimeInterval {
             guard networkPath.isSatisfied else { return 0 }
             guard reconnectCount < maxRetryCount else { return 0 }
-            return pow(Double(exponentialBackoffBase), Double(reconnectCount)) * exponentialBackoffScale
+            let intervel = pow(Double(exponentialBackoffBase), Double(reconnectCount)) * exponentialBackoffScale
+            return min(intervel, maxRetryInterval)
         }
     }
 
@@ -102,7 +95,7 @@ public extension WebSocketClient {
             self.maxRetryCount = maxRetryCount
         }
 
-        public func reconnectDelay(webSocket: WebSocketClient, reconnectReason: WebSocketClient.ReconnectReason, reconnectCount: UInt, networkPath: NWPath) async -> TimeInterval {
+        public func reconnectDelay(webSocket _: WebSocketClient, reconnectReason _: WebSocketClient.ReconnectReason, reconnectCount: UInt, networkPath: NWPath) async -> TimeInterval {
             guard networkPath.isSatisfied else { return 0 }
             guard reconnectCount < maxRetryCount else { return 0 }
             return fixedDelay
@@ -113,16 +106,18 @@ public extension WebSocketClient {
     struct LinearDelayReconnectStrategy: WebSocketClient.ReconnectStrategy, Sendable {
         private let linearDelay: TimeInterval
         private let maxRetryCount: UInt
+        private let maxRetryInterval: TimeInterval
 
-        public init(linearDelay: TimeInterval, maxRetryCount: UInt = .max) {
+        public init(linearDelay: TimeInterval, maxRetryCount: UInt = .max, maxRetryInterval: TimeInterval = 10 * 60) {
             self.linearDelay = linearDelay
             self.maxRetryCount = maxRetryCount
+            self.maxRetryInterval = maxRetryInterval
         }
 
-        public func reconnectDelay(webSocket: WebSocketClient, reconnectReason: WebSocketClient.ReconnectReason, reconnectCount: UInt, networkPath: NWPath) async -> TimeInterval {
+        public func reconnectDelay(webSocket _: WebSocketClient, reconnectReason _: WebSocketClient.ReconnectReason, reconnectCount: UInt, networkPath: NWPath) async -> TimeInterval {
             guard networkPath.isSatisfied else { return 0 }
             guard reconnectCount < maxRetryCount else { return 0 }
-            return linearDelay * Double(reconnectCount)
+            return min(linearDelay * Double(reconnectCount), maxRetryInterval)
         }
     }
 }

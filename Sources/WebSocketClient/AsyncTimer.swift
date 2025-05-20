@@ -69,19 +69,19 @@ final actor AsyncTimer {
         task = Task(priority: priority) {
             guard repeating else {
                 // one-time timer
-                try await self.delay(interval)
+                try await Self.sleep(interval)
                 await self.handler()
                 return
             }
 
             // repeating timer
             if !firesImmediately {
-                try await self.delay(interval)
+                try await Self.sleep(interval)
             }
             do {
                 while !Task.isCancelled {
                     await self.handler()
-                    try await self.delay(interval)
+                    try await Self.sleep(interval)
                 }
             } catch is CancellationError {
                 await cancelHandler?()
@@ -110,8 +110,8 @@ final actor AsyncTimer {
         restart()
     }
 
-    /// Delays the timer by the specified interval.
-    private func delay(_ interval: TimeInterval) async throws {
+    /// Sleep for the specified interval.
+    static func sleep(_ interval: TimeInterval) async throws {
         try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
     }
 }

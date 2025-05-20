@@ -7,7 +7,7 @@
 
 import Foundation
 import Network
-import Starscream
+@preconcurrency import Starscream
 
 // Enforce minimum Swift version for all platforms and build systems.
 #if swift(<5.9)
@@ -19,7 +19,7 @@ public enum WebSocketClientInfo: Sendable {
     public static let version = "0.0.1"
 }
 
-public class WebSocketClient: @unchecked Sendable {
+open class WebSocketClient: @unchecked Sendable {
     /// The URL request used to establish the WebSocket connection.
     private let urlRequest: URLRequest
 
@@ -30,7 +30,7 @@ public class WebSocketClient: @unchecked Sendable {
     private let requireNetworkAvailable: Bool
 
     /// The WebSocket engine to use. Default is `.tcpTransport`.
-    private let engine: WebSocketEngine
+    private let engine: WebSocketClient.Engine
 
     /// The strategy to use for reconnecting.
     private let reconnectStrategy: ReconnectStrategy
@@ -42,6 +42,7 @@ public class WebSocketClient: @unchecked Sendable {
     private let networkPath = NetworkPath()
 
     /// The current reconnect count.
+    @WebSocketClientActor
     private var reconnectCount: UInt = 0
 
     /// Auto ping timer.
@@ -52,7 +53,14 @@ public class WebSocketClient: @unchecked Sendable {
 
     /// The state of the WebSocket connection.
     @WebSocketClientActor
-    private var state: WebSocketState = .closed
+    public var state: WebSocketClient.State = .closed {
+        didSet {
+            guard state != oldValue else { return }
+            delegate?.webSocketClient(self, didUpdate: state)
+        }
+    }
+
+    public var delegate: WebSocketClient.Delegate?
 
     /// Initializes a new `WebSocketClient` instance.
     /// - Parameters:
@@ -64,7 +72,7 @@ public class WebSocketClient: @unchecked Sendable {
     public required init(urlRequest: URLRequest,
                          autoPingInterval: TimeInterval = 0,
                          requireNetworkAvailable: Bool = true,
-                         engine: WebSocketEngine = .tcpTransport,
+                         engine: WebSocketClient.Engine = .tcpTransport,
                          reconnectStrategy: ReconnectStrategy = WebSocketClient.defaultReconnectStrategy)
     {
         self.urlRequest = urlRequest
@@ -72,7 +80,7 @@ public class WebSocketClient: @unchecked Sendable {
         self.requireNetworkAvailable = requireNetworkAvailable
         self.engine = engine
         self.reconnectStrategy = reconnectStrategy
-        self.webSocket = WebSocket(request: urlRequest, useCustomEngine: {
+        webSocket = WebSocket(request: urlRequest, useCustomEngine: {
             switch engine {
             case .tcpTransport: return true
             case .urlSession: return false
@@ -100,7 +108,7 @@ public class WebSocketClient: @unchecked Sendable {
                             connectionHeader: [String: String],
                             autoPingInterval: TimeInterval = 0,
                             requireNetworkAvailable: Bool = true,
-                            engine: WebSocketEngine = .tcpTransport,
+                            engine: WebSocketClient.Engine = .tcpTransport,
                             reconnectStrategy: ReconnectStrategy = WebSocketClient.defaultReconnectStrategy)
     {
         self.init(urlRequest: .init(url: url,
@@ -121,15 +129,15 @@ public extension WebSocketClient {
     /// Connects to the WebSocket server.
     func connect() async {
         if case .connected = state {
-            debugPrint("websocket connect ignored: connection is already connected")
+            warningLog("websocket connect ignored: connection is already connected")
             return
         }
         if case .connecting = state {
-            debugPrint("websocket connect ignored: connection is already connecting")
+            warningLog("websocket connect ignored: connection is already connecting")
             return
         }
         if requireNetworkAvailable, await !networkPath.isSatisfied {
-            debugPrint("websocket connect ignored: network is not available")
+            warningLog("websocket connect ignored: network is not satisfied")
             return
         }
         state = .connecting
@@ -139,9 +147,10 @@ public extension WebSocketClient {
 
     /// Disconnects from the WebSocket server.
     /// - Parameter closeCode: The close code to use for the disconnection.
-    func disconnect(closeCode: WebSocketCloseCode = .normal) async {
-        webSocket.disconnect(closeCode: closeCode.rawValue)
+    func disconnect(closeCode: URLSessionWebSocketTask.CloseCode = .normalClosure) async {
+        webSocket.disconnect(closeCode: UInt16(closeCode.rawValue))
         await disableAutoPing()
+        await destroyReconnectTimer(resetCount: true)
     }
 
     /// Forcefully disconnects from the WebSocket server.
@@ -153,17 +162,17 @@ public extension WebSocketClient {
 
     /// Sends a WebSocket frame.
     /// - Parameter frame: The frame to send.
-    func send(_ frame: WebSocketFrameOpCode) async {
+    func send(_ frame: WebSocketClient.FrameOpCode) async {
         guard case .connected = state else {
-            debugPrint("websocket send ignored: connection is not connected")
+            warningLog("websocket send ignored: connection is not connected")
             return
         }
         await withCheckedContinuation { cont in
             switch frame {
-            case .pong(let data): webSocket.write(pong: data) { cont.resume() }
-            case .ping(let data): webSocket.write(ping: data) { cont.resume() }
-            case .text(let string): webSocket.write(string: string) { cont.resume() }
-            case .binary(let data): webSocket.write(data: data) { cont.resume() }
+            case let .pong(data): webSocket.write(pong: data) { cont.resume() }
+            case let .ping(data): webSocket.write(ping: data) { cont.resume() }
+            case let .text(string): webSocket.write(string: string) { cont.resume() }
+            case let .binary(data): webSocket.write(data: data) { cont.resume() }
             }
         }
     }
@@ -184,46 +193,51 @@ public extension WebSocketClient {
 
 // MARK: - Reconnect
 
+@WebSocketClientActor
 public extension WebSocketClient {
     private func tryReconnectAfterNetworkRecovery(path: NWPath) async {
-        guard await networkPath.isSatisfied else { return }
-        guard case .failed = await state else { return }
+        guard case .closed = state else { return }
+        guard await reconnectStrategy.shouldReconnectWhenNetworkRecovered(webSocket: self, networkPath: path) else { return }
+        debugLog("Network recovered, try reconnect")
         await reconnect(reason: .networkRecovery(path))
     }
 
     private func reconnect(reason: ReconnectReason) async {
-        debugPrint("try reconnect for reason: \(reason.description)")
-        let currentState = await state
-        guard case .failed = currentState else {
-            debugPrint("skip reconnect for current state is \(currentState.rawValue)")
+        debugLog("try reconnect for reason: \(reason.description)")
+        switch state {
+        case .connecting:
+            debugLog("skip reconnect for current state is \(state.rawValue)")
             return
+        case .connected:
+            debugLog("current state is \(state.rawValue), force disconnect before reconnect")
+            await forceDisconnect()
+            try? await AsyncTimer.sleep(0.1)
+            fallthrough
+        case .closed:
+            let currentNetworkPath = await networkPath.currentPath
+            let delay = await reconnectStrategy.reconnectDelay(webSocket: self,
+                                                               reconnectReason: reason,
+                                                               reconnectCount: reconnectCount,
+                                                               networkPath: currentNetworkPath)
+            guard delay > 0 else {
+                debugLog("stop reconnect for reconnectStrategy without valid delay")
+                return
+            }
+            await scheduleReconnectTimer(interval: delay)
         }
-        let currentNetworkPath = await networkPath.currentPath
-        let delay = await reconnectStrategy.reconnectDelay(webSocket: self,
-                                                           reconnectReason: reason,
-                                                           reconnectCount: reconnectCount,
-                                                           networkPath: currentNetworkPath)
-        guard delay > 0 else {
-            debugPrint("stop reconnect for reconnectStrategy without valid delay")
-            return
-        }
-        if requireNetworkAvailable, await !networkPath.isSatisfied {
-            debugPrint("skip reconnect for network is not available")
-            // reset reconnect count for network not available, because need reconnect after network recovery as soon as possible
-            await destroyReconnectTimer(resetCount: true)
-            return
-        }
-        await scheduleReconnectTimer(interval: delay)
     }
 
     private func scheduleReconnectTimer(interval: TimeInterval) async {
-        debugPrint("schedule reconnect after \(interval) seconds")
+        debugLog("schedule reconnect after \(interval) seconds")
+        await destroyReconnectTimer(resetCount: false)
         reconnectTimer = AsyncTimer(interval: interval, repeating: false) { [weak self] in
             guard let self else { return }
-            await self.connect()
+            await connect()
+            Task { @WebSocketClientActor in
+                reconnectCount += 1
+            }
         }
         await reconnectTimer?.start()
-        reconnectCount += 1
     }
 
     private func destroyReconnectTimer(resetCount: Bool = false) async {
@@ -231,6 +245,7 @@ public extension WebSocketClient {
             if resetCount { reconnectCount = 0 }
         }
         guard let reconnectTimer else { return }
+        debugLog("destroy reconnect timer")
         await reconnectTimer.stop()
         self.reconnectTimer = nil
     }
@@ -247,15 +262,11 @@ extension WebSocketClient {
         await networkPath.pathOnChange { [weak self] path in
             guard let self else { return }
             guard path.isSatisfied else {
-                debugPrint("Network is not available")
+                debugLog("Network is not satisfied, path is \(path.debugDescription)")
                 return
             }
-            if case .failed = await state {
-                debugPrint("Network recovered, try reconnect")
-                await tryReconnectAfterNetworkRecovery(path: path)
-            } else {
-                debugPrint("Network recovered")
-            }
+            debugLog("Network is satisfied, path is \(path.debugDescription)")
+            await tryReconnectAfterNetworkRecovery(path: path)
         }
     }
 
@@ -265,7 +276,7 @@ extension WebSocketClient {
     }
 }
 
-// MARK: - Ping Pong
+// MARK: - Auto Ping
 
 private extension WebSocketClient {
     func enableAutoPing() async {
@@ -287,72 +298,38 @@ private extension WebSocketClient {
 
 @WebSocketClientActor
 extension WebSocketClient {
-    func receive(event: WebSocketClient.Event) async {}
+    func receive(event: WebSocketClient.Event) async {
+        state = WebSocketClient.State(event: event)
+        delegate?.webSocketClient(self, didReceive: event)
+        if await reconnectStrategy.shouldReconnectWhenReceivingEvent(webSocket: self, event: event) {
+            await reconnect(reason: .reconnectSuggestedEvent(event))
+        } else {
+            await destroyReconnectTimer(resetCount: true)
+        }
+    }
 }
 
 // MARK: - WebSocketDelegate
 
 extension WebSocketClient: WebSocketDelegate {
-    public func didReceive(event: Starscream.WebSocketEvent, client: any Starscream.WebSocketClient) {
+    public func didReceive(event: Starscream.WebSocketEvent, client _: any Starscream.WebSocketClient) {
         let clientEvent = WebSocketClient.Event(event: event)
         Task { @WebSocketClientActor in
             await self.receive(event: clientEvent)
-            let shouldReconnect = await self.reconnectStrategy.shouldReconnectWhenReceivingEvent(webSocket: self, event: clientEvent)
-            if shouldReconnect {
-                await self.reconnect(reason: .exceptionEvent(clientEvent))
-            }
-        }
-        switch event {
-        case .connected(let headers):
-            Task { @WebSocketClientActor in
-                self.state = .connected
-                await self.destroyReconnectTimer(resetCount: true)
-                await self.enableAutoPing()
-            }
-        case .disconnected(let reason, let code):
-            Task { @WebSocketClientActor in
-                self.state = .closed
-                await self.destroyReconnectTimer(resetCount: true)
-                await self.disableAutoPing()
-            }
-        case .error(let error):
-            Task { @WebSocketClientActor in
-                self.state = .failed
-            }
-        case .viabilityChanged(let viability):
-            Task { @WebSocketClientActor in
-            }
-        case .reconnectSuggested(let suggested):
-            Task { @WebSocketClientActor in
-                let event = WebSocketClient.Event.reconnectSuggested(suggested)
-                if suggested {
-                    await self.forceDisconnect()
-                    self.state = .failed
-                }
-            }
-        case .cancelled:
-            Task { @WebSocketClientActor in
-                self.state = .failed
-            }
-        case .peerClosed:
-            Task { @WebSocketClientActor in
-            }
-        default:
-            break
         }
     }
 }
 
 public extension WebSocketClient {
     enum ReconnectReason: Sendable, CustomStringConvertible {
-        case exceptionEvent(WebSocketClient.Event)
+        case reconnectSuggestedEvent(WebSocketClient.Event)
         case networkRecovery(NWPath)
 
         public var description: String {
             switch self {
-            case .exceptionEvent(let event):
-                return "websocket exception event occurred of \(event.description)"
-            case .networkRecovery(let nWPath):
+            case let .reconnectSuggestedEvent(event):
+                return "websocket reconnect suggested for \(event.description)"
+            case let .networkRecovery(nWPath):
                 return "network recovery for \(nWPath.debugDescription)"
             }
         }

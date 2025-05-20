@@ -7,9 +7,11 @@
 
 import Foundation
 
-public enum WebSocketEngine: Sendable {
-    // Using TCP NWConnection to implement WebSocket
-    case tcpTransport
-    // Using URLSessionWebSocketTask to implement WebSocket
-    case urlSession
+public extension WebSocketClient {
+    enum Engine: Sendable {
+        // Using TCP NWConnection to implement WebSocket
+        case tcpTransport
+        // Using URLSessionWebSocketTask to implement WebSocket
+        case urlSession
+    }
 }

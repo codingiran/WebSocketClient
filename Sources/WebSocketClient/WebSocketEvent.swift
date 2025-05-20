@@ -6,12 +6,11 @@
 //
 
 import Foundation
-import Starscream
 
 public extension WebSocketClient {
-    enum Event: Sendable, CustomStringConvertible {
+    enum Event: Sendable {
         case connected([String: String])
-        case disconnected(String, UInt16)
+        case disconnected(String, URLSessionWebSocketTask.CloseCode)
         case text(String)
         case binary(Data)
         case pong(Data?)
@@ -21,26 +20,83 @@ public extension WebSocketClient {
         case reconnectSuggested(Bool)
         case cancelled
         case peerClosed
+    }
+}
 
+extension WebSocketClient.Event: CustomStringConvertible, CustomDebugStringConvertible {
+    public var description: String {
+        switch self {
+        case let .connected(dictionary):
+            return "Connected with headers: \(dictionary)"
+        case let .disconnected(string, closeCode):
+            return "Disconnected: \(string), Code: \(closeCode)"
+        case let .text(string):
+            return "Received text: \(string)"
+        case let .binary(data):
+            return "Received binary: \(data)"
+        case .pong:
+            return "Received pong"
+        case .ping:
+            return "Received ping"
+        case let .error(error):
+            return "Error occurred: \(error?.localizedDescription ?? "Unknown error")"
+        case let .viabilityChanged(bool):
+            return "Viability changed: \(bool)"
+        case let .reconnectSuggested(bool):
+            return "Reconnect suggested: \(bool)"
+        case .cancelled:
+            return "Cancelled"
+        case .peerClosed:
+            return "Peer closed"
+        }
+    }
+
+    public var debugDescription: String { description }
+}
+
+// MARK: - Reconnect suggested
+
+public extension WebSocketClient.Event {
+    var isReconnectSuggested: Bool {
+        switch self {
+        case .connected, .text, .binary, .ping, .pong, .viabilityChanged:
+            return false
+        case let .disconnected(_, closeCode):
+            return closeCode.isReconnectSuggested
+        case let .reconnectSuggested(suggested):
+            return suggested
+        case .cancelled, .error, .peerClosed:
+            return true
+        }
+    }
+}
+
+#if canImport(Starscream)
+
+    import Starscream
+
+    // MARK: - Parse from Starscream
+
+    extension WebSocketClient.Event {
         init(event: Starscream.WebSocketEvent) {
             switch event {
-            case .connected(let headers):
+            case let .connected(headers):
                 self = .connected(headers)
-            case .disconnected(let reason, let code):
-                self = .disconnected(reason, code)
-            case .text(let string):
+            case let .disconnected(reason, code):
+                self = .disconnected(reason, .init(rawValue: Int(code)) ?? .invalid)
+            case let .text(string):
                 self = .text(string)
-            case .binary(let data):
+            case let .binary(data):
                 self = .binary(data)
-            case .pong(let data):
+            case let .pong(data):
                 self = .pong(data)
-            case .ping(let data):
+            case let .ping(data):
                 self = .ping(data)
-            case .error(let error):
+            case let .error(error):
                 self = .error(error)
-            case .viabilityChanged(let viability):
+            case let .viabilityChanged(viability):
                 self = .viabilityChanged(viability)
-            case .reconnectSuggested(let suggested):
+            case let .reconnectSuggested(suggested):
                 self = .reconnectSuggested(suggested)
             case .cancelled:
                 self = .cancelled
@@ -48,32 +104,6 @@ public extension WebSocketClient {
                 self = .peerClosed
             }
         }
-
-        public var description: String {
-            switch self {
-            case .connected(let dictionary):
-                return "connected: \(dictionary)"
-            case .disconnected(let string, let uInt16):
-                return "disconnected: \(string), code: \(uInt16)"
-            case .text(let string):
-                return "text: \(string)"
-            case .binary:
-                return "binary"
-            case .pong:
-                return "pong"
-            case .ping:
-                return "ping)"
-            case .error(let error):
-                return "error for \(error?.localizedDescription ?? "unknown")"
-            case .viabilityChanged(let bool):
-                return "viabilityChanged \(bool)"
-            case .reconnectSuggested(let bool):
-                return "reconnectSuggested \(bool)"
-            case .cancelled:
-                return "cancelled"
-            case .peerClosed:
-                return "peerClosed"
-            }
-        }
     }
-}
+
+#endif
