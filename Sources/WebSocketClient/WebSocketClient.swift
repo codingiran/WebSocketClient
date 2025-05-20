@@ -5,6 +5,7 @@
 //  Created by iran.qiu on 2025/05/16.
 //
 
+import AsyncTimer
 import Foundation
 import Network
 @preconcurrency import Starscream
