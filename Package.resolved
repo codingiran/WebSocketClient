@@ -1,13 +1,22 @@
 {
-  "originHash" : "651305562ca85e2a7bb793b6c577718d54bb60f6fbb271bbafe1e15fa209a1bc",
+  "originHash" : "59625bbca0d523045dec36fe012c84e550eb0cec16659f2057d079eb8ad75d3e",
   "pins" : [
     {
       "identity" : "asynctimer",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/codingiran/AsyncTimer.git",
       "state" : {
-        "branch" : "develop",
-        "revision" : "60a2e645fba9a0624fab50593c6cd563ce33b4d9"
+        "revision" : "ce4b30dfa069f7bfdd66f9db679b2f24c71ebb13",
+        "version" : "0.0.3"
+      }
+    },
+    {
+      "identity" : "networkpathmonitor",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/codingiran/NetworkPathMonitor.git",
+      "state" : {
+        "revision" : "72b01aac27bb2f5f1bd4afe22a750fb7b2579b63",
+        "version" : "0.0.2"
       }
     },
     {

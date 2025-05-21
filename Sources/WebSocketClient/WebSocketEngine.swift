@@ -15,3 +15,17 @@ public extension WebSocketClient {
         case urlSession
     }
 }
+
+#if canImport(Starscream)
+
+    extension WebSocketClient.Engine {
+        // Whether to use custom engine for Starscream
+        var useCustomEngine: Bool {
+            switch self {
+            case .tcpTransport: return true
+            case .urlSession: return false
+            }
+        }
+    }
+
+#endif

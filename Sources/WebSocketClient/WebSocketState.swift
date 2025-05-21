@@ -10,7 +10,7 @@ import Foundation
 /// A simple enum representing the state of a WebSocket connection.
 
 public extension WebSocketClient {
-    enum State: String, Sendable {
+    enum State: String, Sendable, Equatable {
         case connecting
         case connected
         case closed

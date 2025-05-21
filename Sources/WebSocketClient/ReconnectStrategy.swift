@@ -34,9 +34,9 @@ public extension WebSocketClient {
     }
 
     /// Default ReconnectStrategy
-    /// - Note: Exponential Backoff with base 2 and scale 0.5
+    /// - Note: Exponential Backoff with base 2 and scale 0.5, max retry count is .max, max retry interval is 10 minutes, and delay jitter is 0.2.
     /// - Note: This strategy will pause when the network is not satisfied.
-    static let defaultReconnectStrategy = ExponentialReconnectStrategy(exponentialBackoffBase: 2, exponentialBackoffScale: 0.5)
+    static let defaultReconnectStrategy = ExponentialReconnectStrategy()
 }
 
 // MARK: - Default implementation
@@ -54,7 +54,7 @@ public extension WebSocketClient.ReconnectStrategy {
 // MARK: - Pre established strategy
 
 public extension WebSocketClient {
-    /// No  reconnection
+    /// No reconnection
     struct NoReconnectStrategy: ReconnectStrategy, Sendable {
         public func reconnectDelay(webSocket _: WebSocketClient, reconnectReason _: WebSocketClient.ReconnectReason, reconnectCount _: UInt, networkPath _: NWPath) async -> TimeInterval { 0 }
 
@@ -69,19 +69,36 @@ public extension WebSocketClient {
         private let exponentialBackoffScale: Double
         private let maxRetryCount: UInt
         private let maxRetryInterval: TimeInterval
+        private let delayJitter: TimeInterval
 
-        public init(exponentialBackoffBase: UInt, exponentialBackoffScale: Double, maxRetryCount: UInt = .max, maxRetryInterval: TimeInterval = 10 * 60) {
+        /// Exponential Backoff strategy
+        /// - Parameters:
+        ///   - exponentialBackoffBase: The base of the exponential backoff. Default is 2.
+        ///   - exponentialBackoffScale: The scale of the exponential backoff. Default is 0.5.
+        ///   - maxRetryCount: The maximum number of retry attempts. Default is .max.
+        ///   - maxRetryInterval: The maximum retry interval. Default is 10 minutes.
+        ///   - delayJitter: The jitter range of the delay. Default is 0.2.
+        public init(exponentialBackoffBase: UInt = 2,
+                    exponentialBackoffScale: Double = 0.5,
+                    maxRetryCount: UInt = .max,
+                    maxRetryInterval: TimeInterval = 10 * 60,
+                    delayJitter: TimeInterval = 0.2)
+        {
             self.exponentialBackoffBase = exponentialBackoffBase
             self.exponentialBackoffScale = exponentialBackoffScale
             self.maxRetryCount = maxRetryCount
             self.maxRetryInterval = maxRetryInterval
+            self.delayJitter = delayJitter
         }
 
         public func reconnectDelay(webSocket _: WebSocketClient, reconnectReason _: WebSocketClient.ReconnectReason, reconnectCount: UInt, networkPath: NWPath) async -> TimeInterval {
             guard networkPath.isSatisfied else { return 0 }
             guard reconnectCount < maxRetryCount else { return 0 }
             let intervel = pow(Double(exponentialBackoffBase), Double(reconnectCount)) * exponentialBackoffScale
-            return min(intervel, maxRetryInterval)
+            let delay = min(intervel, maxRetryInterval)
+            let jitterRange = delay * delayJitter
+            let randomJitter = Double.random(in: -jitterRange ... jitterRange)
+            return delay + randomJitter
         }
     }
 
@@ -90,6 +107,10 @@ public extension WebSocketClient {
         private let fixedDelay: TimeInterval
         private let maxRetryCount: UInt
 
+        /// Fixed Delay strategy
+        /// - Parameters:
+        ///   - fixedDelay: The fixed delay time. Default is 5 seconds.
+        ///   - maxRetryCount: The maximum number of retry attempts. Default is .max.
         public init(fixedDelay: TimeInterval, maxRetryCount: UInt = .max) {
             self.fixedDelay = fixedDelay
             self.maxRetryCount = maxRetryCount
@@ -108,6 +129,11 @@ public extension WebSocketClient {
         private let maxRetryCount: UInt
         private let maxRetryInterval: TimeInterval
 
+        /// Linear Delay strategy
+        /// - Parameters:
+        ///   - linearDelay: The linear delay time. Default is 5 seconds.
+        ///   - maxRetryCount: The maximum number of retry attempts. Default is .max.
+        ///   - maxRetryInterval: The maximum retry interval. Default is 10 minutes.
         public init(linearDelay: TimeInterval, maxRetryCount: UInt = .max, maxRetryInterval: TimeInterval = 10 * 60) {
             self.linearDelay = linearDelay
             self.maxRetryCount = maxRetryCount

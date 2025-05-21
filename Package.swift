@@ -23,7 +23,8 @@ let package = Package(
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         .package(url: "https://github.com/daltoniam/Starscream.git", from: "4.0.8"),
-        .package(url: "https://github.com/codingiran/AsyncTimer.git", branch: "develop"),
+        .package(url: "https://github.com/codingiran/AsyncTimer.git", from: "0.0.3"),
+        .package(url: "https://github.com/codingiran/NetworkPathMonitor.git", from: "0.0.2"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -33,6 +34,7 @@ let package = Package(
             dependencies: [
                 "Starscream",
                 "AsyncTimer",
+                "NetworkPathMonitor",
             ]
         ),
         .testTarget(
