@@ -77,6 +77,7 @@ public actor WebSocketClient: Sendable {
                 networkMonitorDebounceInterval: TimeInterval = 0)
     {
         self.urlRequest = urlRequest
+        precondition(autoPingInterval >= 0, "autoPingInterval must be greater than or equal to 0")
         self.autoPingInterval = autoPingInterval
         self.engine = engine
         self.reconnectStrategy = reconnectStrategy
@@ -108,6 +109,7 @@ public actor WebSocketClient: Sendable {
                 reconnectStrategy: ReconnectStrategy = WebSocketClient.defaultReconnectStrategy,
                 networkMonitorDebounceInterval: TimeInterval = 0)
     {
+        precondition(connectTimeout > 0, "connectTimeout must be greater than 0")
         self.init(urlRequest: .init(url: url,
                                     cachePolicy: cachePolicy,
                                     timeoutInterval: connectTimeout,
@@ -123,19 +125,23 @@ public actor WebSocketClient: Sendable {
 
 public extension WebSocketClient {
     /// Connects to the WebSocket server.
-    func connect() async {
+    /// - Returns: A boolean indicating whether the connection was successful.
+    /// - Note: The return not means websocket connected successfully, but the connection process is started.
+    @discardableResult
+    func connect() async -> Bool {
         guard case .closed = state else {
             warningLog("websocket connect ignored for current state is \(state.description)")
-            return
+            return false
         }
         guard await networkMonitor.isPathSatisfied else {
             warningLog("websocket connect ignored for network is not satisfied")
             state = .closed(normalClosure: false)
-            return
+            return false
         }
         debugLog("websocket start connecting")
         state = .connecting
         webSocket.connect()
+        return true
     }
 
     /// Disconnects from the WebSocket server.
@@ -190,9 +196,17 @@ private extension WebSocketClient {
     func webSocketDidChangeState(_ state: WebSocketClient.State) async {
         switch state {
         case .connected:
+            // start auto ping
             await enableAutoPing()
-        case .closed:
+            // destroy reconnect timer after connected
+            await destroyReconnectTimer(resetCount: true)
+        case let .closed(normalClosure):
+            // stop auto ping
             await disableAutoPing()
+            // destroy reconnect timer after closed
+            // if normal closure, no need to reconnect
+            // if abnormal closure, reconnect
+            await destroyReconnectTimer(resetCount: normalClosure)
         default:
             break
         }
@@ -252,9 +266,11 @@ private extension WebSocketClient {
         await destroyReconnectTimer(resetCount: false)
         reconnectTimer = AsyncTimer(interval: interval, repeating: false) { [weak self] in
             guard let self else { return }
-            await connect()
-            await increaseAttemptCount()
-            await delegate?.webSocketClientDidTryReconnect(self, forReason: reason, withAttemptCount: await reconnectCount)
+            if await connect() {
+                // reconnect is started
+                await increaseAttemptCount()
+                await delegate?.webSocketClientDidTryReconnect(self, forReason: reason, withAttemptCount: await reconnectCount)
+            }
         }
         delegate?.webSocketClientWillTryReconnect(self, forReason: reason, afterDelay: interval)
         await reconnectTimer?.start()
