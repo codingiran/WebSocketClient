@@ -15,3 +15,14 @@ public extension WebSocketClient {
         case binary(Data)
     }
 }
+
+extension WebSocketClient.FrameOpCode: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .ping: return "ping"
+        case .pong: return "pong"
+        case .text: return "text"
+        case .binary: return "binaryData"
+        }
+    }
+}

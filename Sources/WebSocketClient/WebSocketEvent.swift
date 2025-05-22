@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// WebSocketClient Event
 public extension WebSocketClient {
     enum Event: Sendable {
         case connected([String: String])
@@ -23,8 +24,78 @@ public extension WebSocketClient {
     }
 }
 
+// MARK: - WebsocketClient State
+
+public extension WebSocketClient.Event {
+    /// Check if the websocket is connected.
+    var isConnected: Bool {
+        switch self {
+        case .connected, .text, .binary, .ping, .pong, .viabilityChanged, .reconnectSuggested:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Check if the websocket is closed abnormally.
+    var isAbnormalClosed: Bool {
+        switch self {
+        case .cancelled, .error, .peerClosed:
+            return true
+        case let .disconnected(_, closeCode):
+            return closeCode.isAbnormalClosed
+        default:
+            return false
+        }
+    }
+
+    /// Check if the websocket is suggesting a reconnect.
+    var isReconnectSuggested: Bool {
+        switch self {
+        case let .reconnectSuggested(suggested):
+            return suggested
+        default:
+            return false
+        }
+    }
+
+    /// The state of the websocket client.
+    var state: WebSocketClient.State {
+        isConnected ? .connected : .closed(normalClosure: isAbnormalClosed)
+    }
+}
+
+// MARK: - StringConvertible
+
 extension WebSocketClient.Event: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
+        switch self {
+        case .connected:
+            return "connected"
+        case .disconnected:
+            return "disconnected"
+        case .text:
+            return "text"
+        case .binary:
+            return "binary"
+        case .pong:
+            return "pong"
+        case .ping:
+            return "ping"
+        case .error:
+            return "error"
+        case .viabilityChanged:
+            return "viabilityChanged"
+        case .reconnectSuggested:
+            return "reconnectSuggested"
+        case .cancelled:
+            return "cancelled"
+        case .peerClosed:
+            return "peerClosed"
+        }
+    }
+
+    public var debugDescription: String {
         switch self {
         case let .connected(dictionary):
             return "Connected with headers: \(dictionary)"
@@ -48,25 +119,6 @@ extension WebSocketClient.Event: CustomStringConvertible, CustomDebugStringConve
             return "Cancelled"
         case .peerClosed:
             return "Peer closed"
-        }
-    }
-
-    public var debugDescription: String { description }
-}
-
-// MARK: - Reconnect suggested
-
-public extension WebSocketClient.Event {
-    var isReconnectSuggested: Bool {
-        switch self {
-        case .connected, .text, .binary, .ping, .pong, .viabilityChanged:
-            return false
-        case let .disconnected(_, closeCode):
-            return closeCode.isReconnectSuggested
-        case let .reconnectSuggested(suggested):
-            return suggested
-        case .cancelled, .error, .peerClosed:
-            return true
         }
     }
 }
