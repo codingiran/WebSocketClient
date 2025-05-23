@@ -29,9 +29,9 @@ public extension WebSocketClient {
 
         public var description: String {
             switch self {
-            case let .suggestedEvent(event):
+            case .suggestedEvent:
                 return "suggested reconnect event"
-            case let .networkRecovery(nWPath):
+            case .networkRecovery:
                 return "network recovery"
             }
         }

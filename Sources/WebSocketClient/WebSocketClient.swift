@@ -76,14 +76,14 @@ public actor WebSocketClient: Sendable {
                 reconnectStrategy: ReconnectStrategy = WebSocketClient.defaultReconnectStrategy,
                 networkMonitorDebounceInterval: TimeInterval = 0)
     {
-        self.urlRequest = urlRequest
         precondition(autoPingInterval >= 0, "autoPingInterval must be greater than or equal to 0")
+        precondition(networkMonitorDebounceInterval >= 0, "networkMonitorDebounceInterval must be greater than or equal to 0")
+        self.urlRequest = urlRequest
         self.autoPingInterval = autoPingInterval
         self.engine = engine
         self.reconnectStrategy = reconnectStrategy
         self.networkMonitorDebounceInterval = networkMonitorDebounceInterval
         // monitor network path
-        precondition(networkMonitorDebounceInterval >= 0, "networkMonitorDebounceInterval must be greater than or equal to 0")
         networkMonitor = NetworkPathMonitor(debounceInterval: networkMonitorDebounceInterval)
         webSocket = WebSocket(request: urlRequest, useCustomEngine: engine.useCustomEngine)
         webSocket.delegate = self
@@ -204,8 +204,7 @@ private extension WebSocketClient {
             // stop auto ping
             await disableAutoPing()
             // destroy reconnect timer after closed
-            // if normal closure, no need to reconnect
-            // if abnormal closure, reconnect
+            // if normal closure, no need to reconnect, if abnormal closure, reconnect
             await destroyReconnectTimer(resetCount: normalClosure)
         default:
             break
