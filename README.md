@@ -163,7 +163,3 @@ func webSocketClient(_ client: WebSocketClient, didOutput log: WebSocketClient.L
 ## License
 
 WebSocketClient is available under the MIT license. See the [LICENSE](LICENSE) file for more info.
-
-## Credits
-
-WebSocketClient is built on top of [Starscream](https://github.com/daltoniam/Starscream), a great WebSocket library for Swift.

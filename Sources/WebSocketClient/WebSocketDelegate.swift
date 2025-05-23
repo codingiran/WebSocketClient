@@ -25,9 +25,6 @@ public extension WebSocketClient {
         /// WebSocket did try reconnect
         func webSocketClientDidTryReconnect(_ client: WebSocketClient, forReason reason: WebSocketClient.ReconnectReason, withAttemptCount attemptCount: UInt)
 
-        /// WebSocket will send auto ping
-        func webSocketClientWillSendAutoPing(_ client: WebSocketClient)
-
         /// WebSocket did send auto ping
         func webSocketClientDidSendAutoPing(_ client: WebSocketClient)
 
@@ -41,9 +38,8 @@ public extension WebSocketClient.Delegate {
     func webSocketClient(_: WebSocketClient, didUpdate _: WebSocketClient.State) {}
     func webSocketClient(_: WebSocketClient, didReceive _: WebSocketClient.Event) {}
     func webSocketClient(_: WebSocketClient, didOutput _: WebSocketClient.Log) {}
+    func webSocketClientDidSendAutoPing(_: WebSocketClient) {}
     func webSocketClientWillTryReconnect(_: WebSocketClient, forReason _: WebSocketClient.ReconnectReason, afterDelay _: TimeInterval) {}
     func webSocketClientDidTryReconnect(_: WebSocketClient, forReason _: WebSocketClient.ReconnectReason, withAttemptCount _: UInt) {}
-    func webSocketClientWillSendAutoPing(_: WebSocketClient) {}
-    func webSocketClientDidSendAutoPing(_: WebSocketClient) {}
     func webSocketClient(_: WebSocketClient, didMonitorNetworkPathChange _: NWPath) {}
 }

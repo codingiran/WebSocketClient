@@ -87,8 +87,8 @@ public extension WebSocketClient.ReconnectStrategy {
     }
 
     func shouldReconnectWhenReceivingEvent(webSocket _: WebSocketClient, event: WebSocketClient.Event) async -> Bool {
-        // Default implementation: reconnect when event is abnormal closed or reconnect suggested
-        event.isAbnormalClosed || event.isReconnectSuggested
+        // Default implementation: reconnect when event is abnormal closed
+        event.isAbnormalClosed
     }
 }
 

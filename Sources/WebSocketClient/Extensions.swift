@@ -68,3 +68,17 @@ extension URLSessionWebSocketTask.CloseCode {
         }
     }
 }
+
+//extension URLSessionWebSocketTask {
+//    func sendPing() async throws {
+//        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+//            self.sendPing { error in
+//                if let error {
+//                    cont.resume(throwing: error)
+//                } else {
+//                    cont.resume()
+//                }
+//            }
+//        }
+//    }
+//}

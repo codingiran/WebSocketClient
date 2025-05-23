@@ -9,7 +9,6 @@ import AsyncTimer
 import Foundation
 import Network
 import NetworkPathMonitor
-@preconcurrency import Starscream
 
 // Enforce minimum Swift version for all platforms and build systems.
 #if swift(<5.9)
@@ -21,24 +20,21 @@ public enum WebSocketClientInfo: Sendable {
     public static let version = "0.0.1"
 }
 
-public actor WebSocketClient: Sendable {
+public final class WebSocketClient: @unchecked Sendable {
     /// The URL request used to establish the WebSocket connection.
     public let urlRequest: URLRequest
 
     /// The interval at which to send ping frames. If set to 0, auto ping will be disabled. Default is 0 seconds.
     public let autoPingInterval: TimeInterval
 
-    /// The WebSocket engine to use. Default is `.tcpTransport`.
-    public let engine: WebSocketClient.Engine
+    /// The WebSocket backend to use. Default is `.urlSession`.
+    public let webSocketBackend: WebSocketClient.Backending
 
     /// The strategy to use for reconnecting.
     public let reconnectStrategy: ReconnectStrategy
 
     /// The debounce interval for network path monitoring. 0 means no debounce. Default is 0 seconds.
     public let networkMonitorDebounceInterval: TimeInterval
-
-    /// The WebSocket instance used for the connection.
-    private let webSocket: WebSocket
 
     /// Network path monitor to check network availability.
     private let networkMonitor: NetworkPathMonitor
@@ -67,27 +63,29 @@ public actor WebSocketClient: Sendable {
     /// - Parameters:
     ///   - urlRequest: The URL request to use for the WebSocket connection.
     ///   - autoPingInterval: The interval at which to send ping frames, If set to 0, auto ping will be disabled, Default is 0 seconds.
-    ///   - engine: The WebSocket engine to use, default is `.tcpTransport`.
+    ///   - backend: The WebSocket backend to use, default is `.urlSession`.
     ///   - reconnectStrategy: The strategy to use for reconnecting.
     ///   - networkMonitorDebounceInterval: The debounce interval for network path monitoring. 0 means no debounce. Default is 0 seconds.
-    public init(urlRequest: URLRequest,
-                autoPingInterval: TimeInterval = 0,
-                engine: WebSocketClient.Engine = .tcpTransport,
-                reconnectStrategy: ReconnectStrategy = WebSocketClient.defaultReconnectStrategy,
-                networkMonitorDebounceInterval: TimeInterval = 0)
+    public required init(urlRequest: URLRequest,
+                         autoPingInterval: TimeInterval = 0,
+                         backend: WebSocketClient.Backending = URLSessionBackend(),
+                         reconnectStrategy: ReconnectStrategy = WebSocketClient.defaultReconnectStrategy,
+                         networkMonitorDebounceInterval: TimeInterval = 0)
     {
         precondition(autoPingInterval >= 0, "autoPingInterval must be greater than or equal to 0")
         precondition(networkMonitorDebounceInterval >= 0, "networkMonitorDebounceInterval must be greater than or equal to 0")
         self.urlRequest = urlRequest
         self.autoPingInterval = autoPingInterval
-        self.engine = engine
+        webSocketBackend = backend
         self.reconnectStrategy = reconnectStrategy
         self.networkMonitorDebounceInterval = networkMonitorDebounceInterval
-        // monitor network path
         networkMonitor = NetworkPathMonitor(debounceInterval: networkMonitorDebounceInterval)
-        webSocket = WebSocket(request: urlRequest, useCustomEngine: engine.useCustomEngine)
-        webSocket.delegate = self
-        Task { await self.startWatchingNetworkPath() }
+        Task {
+            // start network path monitoring
+            await self.startWatchingNetworkPath()
+            // wait for events
+            await self.waitForWebSocketEvent()
+        }
     }
 
     /// Initializes a new `WebSocketClient` instance with a URL and additional parameters.
@@ -97,17 +95,17 @@ public actor WebSocketClient: Sendable {
     ///   - connectTimeout: The timeout interval for the connection.
     ///   - httpHeaders: The HTTP headers to include in the URL request.
     ///   - autoPingInterval: The interval at which to send ping frames, If set to 0, ping frames will not be sent.
-    ///   - engine: The WebSocket engine to use, default is `.tcpTransport`.
+    ///   - backend: The WebSocket backend to use, default is `.urlSession`.
     ///   - reconnectStrategy: The strategy to use for reconnecting.
     ///   - networkMonitorDebounceInterval: The debounce interval for network path monitoring. 0 means no debounce. Default is 0 seconds.
-    public init(url: URL,
-                cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy,
-                connectTimeout: TimeInterval = 5,
-                httpHeaders: [String: String],
-                autoPingInterval: TimeInterval = 0,
-                engine: WebSocketClient.Engine = .tcpTransport,
-                reconnectStrategy: ReconnectStrategy = WebSocketClient.defaultReconnectStrategy,
-                networkMonitorDebounceInterval: TimeInterval = 0)
+    public convenience init(url: URL,
+                            cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy,
+                            connectTimeout: TimeInterval = 5,
+                            httpHeaders: [String: String],
+                            autoPingInterval: TimeInterval = 0,
+                            webSocketBackend: WebSocketClient.Backending = URLSessionBackend(),
+                            reconnectStrategy: ReconnectStrategy = WebSocketClient.defaultReconnectStrategy,
+                            networkMonitorDebounceInterval: TimeInterval = 0)
     {
         precondition(connectTimeout > 0, "connectTimeout must be greater than 0")
         self.init(urlRequest: .init(url: url,
@@ -115,7 +113,7 @@ public actor WebSocketClient: Sendable {
                                     timeoutInterval: connectTimeout,
                                     httpHeaders: httpHeaders),
                   autoPingInterval: autoPingInterval,
-                  engine: engine,
+                  backend: webSocketBackend,
                   reconnectStrategy: reconnectStrategy,
                   networkMonitorDebounceInterval: networkMonitorDebounceInterval)
     }
@@ -133,60 +131,36 @@ public extension WebSocketClient {
             warningLog("websocket connect ignored for current state is \(state.description)")
             return false
         }
-        guard await networkMonitor.isPathSatisfied else {
-            warningLog("websocket connect ignored for network is not satisfied")
-            state = .closed(normalClosure: false)
-            return false
-        }
         debugLog("websocket start connecting")
         state = .connecting
-        webSocket.connect()
+        await webSocketBackend.connect(request: urlRequest)
         return true
     }
 
     /// Disconnects from the WebSocket server.
     /// - Parameter closeCode: The close code to use for the disconnection.
-    func disconnect(closeCode: URLSessionWebSocketTask.CloseCode = .normalClosure) async {
-        webSocket.disconnect(closeCode: UInt16(closeCode.rawValue))
-        await disableAutoPing()
-        await destroyReconnectTimer(resetCount: true)
-    }
-
-    /// Forcefully disconnects from the WebSocket server.
-    func forceDisconnect() async {
-        webSocket.forceDisconnect()
+    /// - Parameter reason: The reason for the disconnection.
+    func disconnect(closeCode: URLSessionWebSocketTask.CloseCode = .normalClosure, reason: String? = nil) async {
+        await webSocketBackend.disconnect(closeCode: closeCode, reason: reason)
         await disableAutoPing()
         await destroyReconnectTimer(resetCount: true)
     }
 
     /// Sends a WebSocket frame.
     /// - Parameter frame: The frame to send.
-    func send(_ frame: WebSocketClient.FrameOpCode) async {
+    func send(_ frame: WebSocketClient.FrameOpCode) async throws {
         guard case .connected = state else {
             warningLog("websocket send \(frame.description) frame ignored, connection is not connected")
             return
         }
-        await withCheckedContinuation { cont in
-            switch frame {
-            case let .pong(data): webSocket.write(pong: data) { cont.resume() }
-            case let .ping(data): webSocket.write(ping: data) { cont.resume() }
-            case let .text(string): webSocket.write(string: string) { cont.resume() }
-            case let .binary(data): webSocket.write(data: data) { cont.resume() }
-            }
-        }
+        try await webSocketBackend.write(frame: frame)
     }
 
     /// Sends a text frame.
     /// - Parameter string: The string to send.
     /// - Parameter data: The data to include in the frame.
-    func ping(data: Data = Data()) async {
-        await send(.ping(data))
-    }
-
-    /// Sends a binary frame.
-    /// - Parameter data: The data to send.
-    func pong(data: Data = Data()) async {
-        await send(.pong(data))
+    func ping() async throws {
+        try await send(.ping)
     }
 }
 
@@ -261,14 +235,14 @@ private extension WebSocketClient {
     }
 
     func scheduleReconnectTimer(interval: TimeInterval, reason: ReconnectReason) async {
-        debugLog("schedule \(reconnectCount)th reconnect attempt after \(interval) seconds, reason: \(reason.description) ")
+        debugLog("schedule \(reconnectCount)th reconnect attempt after \(interval) seconds, reason: \(reason.debugDescription) ")
         await destroyReconnectTimer(resetCount: false)
         reconnectTimer = AsyncTimer(interval: interval, repeating: false) { [weak self] in
             guard let self else { return }
             if await connect() {
                 // reconnect is started
-                await increaseAttemptCount()
-                await delegate?.webSocketClientDidTryReconnect(self, forReason: reason, withAttemptCount: await reconnectCount)
+                increaseAttemptCount()
+                delegate?.webSocketClientDidTryReconnect(self, forReason: reason, withAttemptCount: reconnectCount)
             }
         }
         delegate?.webSocketClientWillTryReconnect(self, forReason: reason, afterDelay: interval)
@@ -295,12 +269,12 @@ extension WebSocketClient {
         await stopWatchingNetworkPath()
         await networkMonitor.pathOnChange { [weak self] path in
             guard let self else { return }
-            await delegate?.webSocketClient(self, didMonitorNetworkPathChange: path)
+            delegate?.webSocketClient(self, didMonitorNetworkPathChange: path)
             guard path.isSatisfied else {
-                await debugLog("network is not satisfied, path is \(path.debugDescription)")
+                debugLog("network is not satisfied, path is \(path.debugDescription)")
                 return
             }
-            await debugLog("network is satisfied, path is \(path.debugDescription)")
+            debugLog("network is satisfied, path is \(path.debugDescription)")
             await tryReconnectAfterNetworkRecovery(path: path)
         }
         await networkMonitor.fire()
@@ -321,11 +295,11 @@ private extension WebSocketClient {
         autoPingTimer = AsyncTimer(interval: autoPingInterval, repeating: true, firesImmediately: true) { [weak self] in
             guard let self else { return }
             Task {
-                await self.delegate?.webSocketClientWillSendAutoPing(self)
-                await self.ping()
-                await self.delegate?.webSocketClientDidSendAutoPing(self)
+                async let _ = try? await self.ping()
+                delegate?.webSocketClientDidSendAutoPing(self)
             }
         }
+        await autoPingTimer?.start()
     }
 
     func disableAutoPing() async {
@@ -338,7 +312,13 @@ private extension WebSocketClient {
 // MARK: - WebSocket Events
 
 extension WebSocketClient {
-    func receive(event: WebSocketClient.Event) async {
+    func waitForWebSocketEvent() async {
+        for await event in webSocketBackend.eventStream {
+            await didReceive(event: event)
+        }
+    }
+
+    func didReceive(event: WebSocketClient.Event) async {
         state = event.state
         delegate?.webSocketClient(self, didReceive: event)
         if await reconnectStrategy.shouldReconnectWhenReceivingEvent(webSocket: self, event: event) {
@@ -346,14 +326,5 @@ extension WebSocketClient {
         } else {
             await destroyReconnectTimer(resetCount: true)
         }
-    }
-}
-
-// MARK: - WebSocketDelegate
-
-extension WebSocketClient: @preconcurrency WebSocketDelegate {
-    public func didReceive(event: Starscream.WebSocketEvent, client _: any Starscream.WebSocketClient) {
-        let clientEvent = WebSocketClient.Event(event: event)
-        Task { await self.receive(event: clientEvent) }
     }
 }

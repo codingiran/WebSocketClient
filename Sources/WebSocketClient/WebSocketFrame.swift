@@ -9,10 +9,9 @@ import Foundation
 
 public extension WebSocketClient {
     enum FrameOpCode: Sendable {
-        case ping(Data = Data())
-        case pong(Data = Data())
+        case ping
         case text(String)
-        case binary(Data)
+        case data(Data)
     }
 }
 
@@ -20,9 +19,8 @@ extension WebSocketClient.FrameOpCode: CustomStringConvertible {
     public var description: String {
         switch self {
         case .ping: return "ping"
-        case .pong: return "pong"
         case .text: return "text"
-        case .binary: return "binaryData"
+        case .data: return "data"
         }
     }
 }
