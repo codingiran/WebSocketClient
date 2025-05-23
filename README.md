@@ -99,6 +99,8 @@ let client = WebSocketClient(url: URL(string: "wss://echo.websocket.org")!,
 ### Custom Reconnection Strategy
 
 ```swift
+
+/// Exponential backoff strategy
 let strategy = WebSocketClient.ExponentialReconnectStrategy(
     exponentialBackoffBase: 2,
     exponentialBackoffScale: 0.5,
