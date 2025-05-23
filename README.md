@@ -9,14 +9,14 @@ A Swift WebSocket client library for Apple platforms with built-in reconnection,
 
 ## Features
 
-- [x] Swift Concurrency support with async/await
-- [x] Multiple WebSocket engines support (TCP Transport and URLSession)
-- [x] Automatic reconnection with customizable strategies
-- [x] Network path monitoring with automatic reconnection
-- [x] Auto-ping support for connection keep-alive
-- [x] Comprehensive logging system
-- [x] Support for all Apple platforms (iOS, macOS, tvOS, watchOS, visionOS)
-- [x] Swift Package Manager integration
+- ✅ Swift Concurrency support with async/await
+- ✅ Multiple WebSocket engines support (TCP Transport and URLSession)
+- ✅ Automatic reconnection with customizable strategies
+- ✅ Network path monitoring with automatic reconnection
+- ✅ Auto-ping support for connection keep-alive
+- ✅ Comprehensive logging system
+- ✅ Support for all Apple platforms (iOS, macOS, tvOS, watchOS, visionOS)
+- ✅ Swift Package Manager integration
 
 ## Requirements
 
@@ -37,6 +37,7 @@ dependencies: [
 ```
 
 Or add the dependency through Xcode:
+
 1. File > Add Package Dependencies
 2. Search for `https://github.com/codingiran/WebSocketClient.git`
 3. Select "Up to Next Major Version" with "0.0.1"
@@ -59,7 +60,11 @@ await client.send(.text("Hello, WebSocket!"))
 await client.send(.binary(Data()))
 
 // Disconnect
-await client.disconnect()
+await client.disconnect(closeCode: .normalClosure)
+
+// Force disconnect
+await client.forceDisconnect()
+
 ```
 
 ### Delegate Implementation
