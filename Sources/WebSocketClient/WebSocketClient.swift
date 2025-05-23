@@ -95,7 +95,7 @@ public actor WebSocketClient: Sendable {
     ///   - url: The URL to use for the WebSocket connection.
     ///   - cachePolicy: The cache policy to use for the URL request.
     ///   - connectTimeout: The timeout interval for the connection.
-    ///   - connectionHeader: The HTTP headers to include in the URL request.
+    ///   - httpHeaders: The HTTP headers to include in the URL request.
     ///   - autoPingInterval: The interval at which to send ping frames, If set to 0, ping frames will not be sent.
     ///   - engine: The WebSocket engine to use, default is `.tcpTransport`.
     ///   - reconnectStrategy: The strategy to use for reconnecting.
@@ -103,7 +103,7 @@ public actor WebSocketClient: Sendable {
     public init(url: URL,
                 cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy,
                 connectTimeout: TimeInterval = 5,
-                connectionHeader: [String: String],
+                httpHeaders: [String: String],
                 autoPingInterval: TimeInterval = 0,
                 engine: WebSocketClient.Engine = .tcpTransport,
                 reconnectStrategy: ReconnectStrategy = WebSocketClient.defaultReconnectStrategy,
@@ -113,7 +113,7 @@ public actor WebSocketClient: Sendable {
         self.init(urlRequest: .init(url: url,
                                     cachePolicy: cachePolicy,
                                     timeoutInterval: connectTimeout,
-                                    httpHeaders: connectionHeader),
+                                    httpHeaders: httpHeaders),
                   autoPingInterval: autoPingInterval,
                   engine: engine,
                   reconnectStrategy: reconnectStrategy,
