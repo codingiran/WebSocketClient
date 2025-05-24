@@ -19,7 +19,7 @@ public extension WebSocketClient {
     }
 }
 
-// MARK: - WebsocketClient State
+// MARK: - WebsocketClient Status
 
 public extension WebSocketClient.Event {
     /// Check if the websocket is connected.
@@ -42,11 +42,6 @@ public extension WebSocketClient.Event {
         default:
             return false
         }
-    }
-
-    /// The state of the websocket client.
-    var state: WebSocketClient.State {
-        isConnected ? .connected : .closed(normalClosure: isAbnormalClosed)
     }
 }
 

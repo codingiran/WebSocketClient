@@ -69,7 +69,7 @@ extension URLSessionWebSocketTask.CloseCode {
     }
 }
 
-//extension URLSessionWebSocketTask {
+// extension URLSessionWebSocketTask {
 //    func sendPing() async throws {
 //        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
 //            self.sendPing { error in
@@ -81,4 +81,4 @@ extension URLSessionWebSocketTask.CloseCode {
 //            }
 //        }
 //    }
-//}
+// }

@@ -43,9 +43,9 @@ final class WebSocketClientTests: XCTestCase, @unchecked Sendable {
 }
 
 extension WebSocketClientTests: WebSocketClient.Delegate {
-    /// WebSocket state on change
-    func webSocketClient(_: WebSocketClient, didUpdate state: WebSocketClient.State) {
-        print("WebSocket state: \(state.description)")
+    /// WebSocket status on change
+    func webSocketClient(_: WebSocketClient, didUpdate status: WebSocketClient.Status) {
+        print("WebSocket status: \(status.description)")
     }
 
     /// WebSocket received a message

@@ -48,11 +48,11 @@ public final class WebSocketClient: @unchecked Sendable {
     /// Reconnect timer.
     private var reconnectTimer: AsyncTimer?
 
-    /// The state of the WebSocket connection.
-    public private(set) var state: WebSocketClient.State = .closed(normalClosure: true) {
+    /// The status of the WebSocket connection.
+    public private(set) var status: WebSocketClient.Status = .closed(state: .normal) {
         didSet {
-            guard state != oldValue else { return }
-            Task { await self.webSocketDidChangeState(state) }
+            guard status != oldValue else { return }
+            Task { await self.webSocketDidChangeStatus(status) }
         }
     }
 
@@ -127,12 +127,12 @@ public extension WebSocketClient {
     /// - Note: The return not means websocket connected successfully, but the connection process is started.
     @discardableResult
     func connect() async -> Bool {
-        guard case .closed = state else {
-            warningLog("websocket connect ignored for current state is \(state.description)")
+        guard case .closed = status else {
+            warningLog("websocket connect ignored for current status is \(status.description)")
             return false
         }
         debugLog("websocket start connecting")
-        state = .connecting
+        status = .connecting
         await webSocketBackend.connect(request: urlRequest)
         return true
     }
@@ -149,7 +149,7 @@ public extension WebSocketClient {
     /// Sends a WebSocket frame.
     /// - Parameter frame: The frame to send.
     func send(_ frame: WebSocketClient.FrameOpCode) async throws {
-        guard case .connected = state else {
+        guard case .connected = status else {
             warningLog("websocket send \(frame.description) frame ignored, connection is not connected")
             return
         }
@@ -164,26 +164,26 @@ public extension WebSocketClient {
     }
 }
 
-// MARK: - State On Change
+// MARK: - Status On Change
 
 private extension WebSocketClient {
-    func webSocketDidChangeState(_ state: WebSocketClient.State) async {
-        switch state {
+    func webSocketDidChangeStatus(_ status: WebSocketClient.Status) async {
+        switch status {
         case .connected:
             // start auto ping
             await enableAutoPing()
             // destroy reconnect timer after connected
             await destroyReconnectTimer(resetCount: true)
-        case let .closed(normalClosure):
+        case let .closed(state):
             // stop auto ping
             await disableAutoPing()
             // destroy reconnect timer after closed
             // if normal closure, no need to reconnect, if abnormal closure, reconnect
-            await destroyReconnectTimer(resetCount: normalClosure)
+            await destroyReconnectTimer(resetCount: state.isNormal)
         default:
             break
         }
-        delegate?.webSocketClient(self, didUpdate: state)
+        delegate?.webSocketClient(self, didUpdate: status)
     }
 }
 
@@ -191,11 +191,11 @@ private extension WebSocketClient {
 
 private extension WebSocketClient {
     func tryReconnectAfterNetworkRecovery(path: NWPath) async {
-        guard case let .closed(normalClosure) = state,
-              !normalClosure
+        guard case let .closed(state) = status,
+              state.isAbnormal
         else {
             // only reconnect when abnormal closure
-            verboseLog("skip reconnect for current state is \(state.description)")
+            verboseLog("skip reconnect for current status is \(status.description)")
             return
         }
         // ask reconnect strategy if reconnect is suggested in this network path
@@ -208,10 +208,15 @@ private extension WebSocketClient {
     }
 
     func reconnect(reason: ReconnectReason) async {
-        if case .connecting = state {
+        if case .connecting = status {
             // skip reconnect for duplicate connecting
-            debugLog("skip reconnect for current state is \(state.description)")
+            debugLog("skip reconnect for current status is \(status.description)")
             return
+        }
+        if case let .closed(state) = status,
+           case let .abnormal(reconnectScheduled) = state, reconnectScheduled
+        {
+            debugLog("skip reconnect for current status is \(status.description), and reconnect is already scheduled")
         }
         let method = await reconnectStrategy.reconnectMethod(webSocket: self,
                                                              reconnectReason: reason,
@@ -225,9 +230,9 @@ private extension WebSocketClient {
                 debugLog("skip reconnect for no valid reconnect delay")
                 return
             }
-            if case .connected = state {
+            if case .connected = status {
                 // disconnect before reconnect
-                debugLog("current state is \(state.description), should disconnect before reconnect")
+                debugLog("current status is \(status.description), should disconnect before reconnect")
                 await disconnect(closeCode: .normalClosure)
             }
             await scheduleReconnectTimer(interval: interval, reason: reason)
@@ -319,7 +324,24 @@ extension WebSocketClient {
     }
 
     func didReceive(event: WebSocketClient.Event) async {
-        state = event.state
+        if case .connected = event {
+            status = .connected
+        }
+        
+        switch event {
+        case .connected(let dictionary):
+            status = .connected
+        case .disconnected(let reason, let closeCode):
+            status
+        case .error(let error):
+            <#code#>
+        }
+        
+        if event.isConnected {
+            status = .connected
+        } else {
+            status = .closed(state: event.isAbnormalClosed ? .abnormal(reconnectScheduled: false) : .normal)
+        }
         delegate?.webSocketClient(self, didReceive: event)
         if await reconnectStrategy.shouldReconnectWhenReceivingEvent(webSocket: self, event: event) {
             await reconnect(reason: .suggestedEvent(event))

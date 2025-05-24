@@ -71,8 +71,8 @@ await client.forceDisconnect()
 
 ```swift
 class WebSocketHandler: WebSocketClient.Delegate {
-    func webSocketClient(_ client: WebSocketClient, didUpdate state: WebSocketClient.State) {
-        print("WebSocket state changed to: \(state)")
+    func webSocketClient(_ client: WebSocketClient, didUpdate status: WebSocketClient.Status) {
+        print("WebSocket status changed to: \(status)")
     }
     
     func webSocketClient(_ client: WebSocketClient, didReceive event: WebSocketClient.Event) {

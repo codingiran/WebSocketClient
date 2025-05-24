@@ -10,8 +10,8 @@ import Network
 
 public extension WebSocketClient {
     protocol Delegate: AnyObject, Sendable {
-        /// WebSocket state on change
-        func webSocketClient(_ client: WebSocketClient, didUpdate state: WebSocketClient.State)
+        /// WebSocket status on change
+        func webSocketClient(_ client: WebSocketClient, didUpdate status: WebSocketClient.Status)
 
         /// WebSocket received a message
         func webSocketClient(_ client: WebSocketClient, didReceive event: WebSocketClient.Event)
@@ -35,7 +35,7 @@ public extension WebSocketClient {
 
 /// Default implementation
 public extension WebSocketClient.Delegate {
-    func webSocketClient(_: WebSocketClient, didUpdate _: WebSocketClient.State) {}
+    func webSocketClient(_: WebSocketClient, didUpdate _: WebSocketClient.Status) {}
     func webSocketClient(_: WebSocketClient, didReceive _: WebSocketClient.Event) {}
     func webSocketClient(_: WebSocketClient, didOutput _: WebSocketClient.Log) {}
     func webSocketClientDidSendAutoPing(_: WebSocketClient) {}
