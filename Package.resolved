@@ -1,13 +1,13 @@
 {
-  "originHash" : "93390c803a9e7f08dac561016c693c0b66099cdb3836442c8dcca26b2d136058",
+  "originHash" : "a60069a1f129989e350ffd5bf212ea9555f0bed2b709eb2102695b396d017354",
   "pins" : [
     {
       "identity" : "asynctimer",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/codingiran/AsyncTimer.git",
       "state" : {
-        "revision" : "ce4b30dfa069f7bfdd66f9db679b2f24c71ebb13",
-        "version" : "0.0.3"
+        "revision" : "5ec0ec37ab8058bfe946d9fccef15d0404199024",
+        "version" : "0.0.4"
       }
     },
     {

@@ -213,11 +213,6 @@ private extension WebSocketClient {
             debugLog("skip reconnect for current status is \(status.description)")
             return
         }
-        if case let .closed(state) = status,
-           case let .abnormal(reconnectScheduled) = state, reconnectScheduled
-        {
-            debugLog("skip reconnect for current status is \(status.description), and reconnect is already scheduled")
-        }
         let method = await reconnectStrategy.reconnectMethod(webSocket: self,
                                                              reconnectReason: reason,
                                                              reconnectCount: reconnectCount,
@@ -324,23 +319,10 @@ extension WebSocketClient {
     }
 
     func didReceive(event: WebSocketClient.Event) async {
-        if case .connected = event {
-            status = .connected
-        }
-        
-        switch event {
-        case .connected(let dictionary):
-            status = .connected
-        case .disconnected(let reason, let closeCode):
-            status
-        case .error(let error):
-            <#code#>
-        }
-        
         if event.isConnected {
             status = .connected
         } else {
-            status = .closed(state: event.isAbnormalClosed ? .abnormal(reconnectScheduled: false) : .normal)
+            status = .closed(state: event.isAbnormalClosed ? .abnormal : .normal)
         }
         delegate?.webSocketClient(self, didReceive: event)
         if await reconnectStrategy.shouldReconnectWhenReceivingEvent(webSocket: self, event: event) {

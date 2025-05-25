@@ -90,13 +90,12 @@ public extension WebSocketClient {
         /// The WebSocket was closed normally.
         case normal
         /// The WebSocket was closed abnormally.
-        case abnormal(reconnectScheduled: Bool)
+        case abnormal
 
         public static func == (lhs: WebSocketClient.ClosureState, rhs: WebSocketClient.ClosureState) -> Bool {
             switch (lhs, rhs) {
             case (.normal, .normal): return true
-            case let (.abnormal(lhsReconnectScheduled), .abnormal(rhsReconnectScheduled)):
-                return lhsReconnectScheduled == rhsReconnectScheduled
+            case (.abnormal, .abnormal): return true
             default: return false
             }
         }
@@ -112,13 +111,6 @@ public extension WebSocketClient {
             switch self {
             case .normal: return false
             case .abnormal: return true
-            }
-        }
-
-        var isReconnectScheduled: Bool {
-            switch self {
-            case .normal: return false
-            case let .abnormal(reconnectScheduled): return reconnectScheduled
             }
         }
     }
