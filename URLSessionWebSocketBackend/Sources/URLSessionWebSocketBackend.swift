@@ -1,23 +1,24 @@
 //
-//  URLSessionBackend.swift
+//  URLSessionWebSocketBackend.swift
 //  WebSocketClient
 //
 //  Created by CodingIran on 2025/5/23.
 //
 
 import Foundation
+import WebSocketCore
 
-public final class URLSessionBackend: NSObject, @unchecked Sendable {
+public final class URLSessionWebSocketBackend: NSObject, @unchecked Sendable {
     private var webSocketTask: URLSessionWebSocketTask?
 
-    private var eventContinuation: AsyncStream<WebSocketClient.Event>.Continuation?
+    private var eventContinuation: AsyncStream<WebSocketClientEvent>.Continuation?
 
     override public init() {
         super.init()
     }
 }
 
-extension URLSessionBackend: WebSocketClient.Backending {
+extension URLSessionWebSocketBackend: WebSocketClientBackend {
     public func connect(request: URLRequest) async {
         webSocketTask = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
             .webSocketTask(with: request)
@@ -27,12 +28,12 @@ extension URLSessionBackend: WebSocketClient.Backending {
         webSocketTask?.resume()
     }
 
-    public func disconnect(closeCode: URLSessionWebSocketTask.CloseCode, reason: String?) async {
+    public func disconnect(closeCode: WebSocketClientCloseCode, reason: String?) async {
         guard let task = webSocketTask else { return }
-        task.cancel(with: closeCode, reason: reason?.data(using: .utf8))
+        task.cancel(with: .init(closeCode: closeCode), reason: reason?.data(using: .utf8))
     }
 
-    public func write(frame: WebSocketClient.FrameOpCode) async throws {
+    public func write(frame: WebSocketClientFrame) async throws {
         guard let task = webSocketTask else { return }
         switch frame {
         case let .text(text):
@@ -46,7 +47,7 @@ extension URLSessionBackend: WebSocketClient.Backending {
         }
     }
 
-    public var eventStream: AsyncStream<WebSocketClient.Event> {
+    public var eventStream: AsyncStream<WebSocketClientEvent> {
         AsyncStream { continuation in
             continuation.onTermination = { _ in
                 self.clearContinuation()
@@ -56,7 +57,7 @@ extension URLSessionBackend: WebSocketClient.Backending {
     }
 }
 
-private extension URLSessionBackend {
+private extension URLSessionWebSocketBackend {
     func receive() async {
         guard let task = webSocketTask else { return }
         do {
@@ -72,8 +73,8 @@ private extension URLSessionBackend {
         }
     }
 
-    func didReceive(event: WebSocketClient.Event) {
-        guard let eventContinuation: AsyncStream<WebSocketClient.Event>.Continuation else { return }
+    func didReceive(event: WebSocketClientEvent) {
+        guard let eventContinuation: AsyncStream<WebSocketClientEvent>.Continuation else { return }
         eventContinuation.yield(event)
     }
 
@@ -82,7 +83,7 @@ private extension URLSessionBackend {
     }
 }
 
-extension URLSessionBackend: URLSessionDataDelegate, URLSessionWebSocketDelegate {
+extension URLSessionWebSocketBackend: URLSessionDataDelegate, URLSessionWebSocketDelegate {
     public func urlSession(_: URLSession, webSocketTask _: URLSessionWebSocketTask, didOpenWithProtocol p: String?) {
         var map: [String: String] = [:]
         if let p {
@@ -96,7 +97,7 @@ extension URLSessionBackend: URLSessionDataDelegate, URLSessionWebSocketDelegate
             guard let reason = reason else { return nil }
             return String(data: reason, encoding: .utf8)
         }()
-        didReceive(event: .disconnected(reasonText, closeCode))
+        didReceive(event: .disconnected(reasonText, .init(closeCode: closeCode)))
     }
 
     public func urlSession(_: URLSession, task _: URLSessionTask, didCompleteWithError error: (any Error)?) {

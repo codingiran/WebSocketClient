@@ -1,35 +1,32 @@
 //
-//  Extensions.swift
+//  WebSocketCloseCode.swift
 //  WebSocketClient
 //
-//  Created by CodingIran on 2025/5/16.
+//  Created by CodingIran on 2025/5/26.
 //
 
 import Foundation
-import Network
 
-// MARK: - Extensions
-
-extension URLRequest {
-    init(url: URL,
-         cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy,
-         timeoutInterval: TimeInterval = 60.0,
-         httpHeaders: [String: String])
-    {
-        self.init(url: url, cachePolicy: cachePolicy, timeoutInterval: timeoutInterval)
-        for (key, value) in httpHeaders {
-            setValue(value, forHTTPHeaderField: key)
-        }
-    }
+/// The close code of the WebSocket connection.
+public enum WebSocketClientCloseCode: Int, Sendable, Equatable {
+    // RFC 6455 about close codes: https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+    case invalid = 0
+    case normalClosure = 1000
+    case goingAway = 1001
+    case protocolError = 1002
+    case unsupportedData = 1003
+    case noStatusReceived = 1005
+    case abnormalClosure = 1006
+    case invalidFramePayloadData = 1007
+    case policyViolation = 1008
+    case messageTooBig = 1009
+    case mandatoryExtensionMissing = 1010
+    case internalServerError = 1011
+    case tlsHandshakeFailure = 1015
 }
 
-public extension Network.NWPath {
-    var isSatisfied: Bool { status == .satisfied }
-}
-
-extension URLSessionWebSocketTask.CloseCode {
+public extension WebSocketClientCloseCode {
     var isAbnormalClosed: Bool {
-        // RFC 6455 about close codes: https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
         switch self {
         case
             // 1000, A code that indicates normal connection closure.
@@ -68,17 +65,3 @@ extension URLSessionWebSocketTask.CloseCode {
         }
     }
 }
-
-// extension URLSessionWebSocketTask {
-//    func sendPing() async throws {
-//        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-//            self.sendPing { error in
-//                if let error {
-//                    cont.resume(throwing: error)
-//                } else {
-//                    cont.resume()
-//                }
-//            }
-//        }
-//    }
-// }

@@ -19,11 +19,16 @@ let package = Package(
             name: "WebSocketClient",
             targets: ["WebSocketClient"]
         ),
+        .library(
+            name: "URLSessionWebSocketBackend",
+            targets: ["URLSessionWebSocketBackend"]
+        ),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         .package(url: "https://github.com/codingiran/AsyncTimer.git", from: "0.0.4"),
         .package(url: "https://github.com/codingiran/NetworkPathMonitor.git", from: "0.0.3"),
+        .package(url: "https://github.com/daltoniam/Starscream.git", from: "4.0.8"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -31,13 +36,40 @@ let package = Package(
         .target(
             name: "WebSocketClient",
             dependencies: [
+                "WebSocketCore",
                 "AsyncTimer",
                 "NetworkPathMonitor",
-            ]
+            ],
+            path: "WebSocketClient/Sources"
+        ),
+        .target(
+            name: "URLSessionWebSocketBackend",
+            dependencies: [
+                "WebSocketCore",
+            ],
+            path: "URLSessionWebSocketBackend/Sources"
+        ),
+        .target(
+            name: "WebSocketCore",
+            path: "WebSocketCore/Sources"
+        ),
+        .target(
+            name: "StarscreamBackend",
+            dependencies: [
+                "WebSocketCore",
+                "Starscream",
+            ],
+            path: "StarscreamBackend/Sources"
         ),
         .testTarget(
             name: "WebSocketClientTests",
-            dependencies: ["WebSocketClient"]
+            dependencies: [
+                "WebSocketClient",
+                "WebSocketCore",
+                "URLSessionWebSocketBackend",
+                "StarscreamBackend",
+            ],
+            path: "WebSocketTests/Sources"
         ),
     ],
     swiftLanguageModes: [.v6]

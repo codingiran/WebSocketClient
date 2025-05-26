@@ -7,15 +7,14 @@
 
 import Foundation
 
-public extension WebSocketClient {
-    enum FrameOpCode: Sendable {
-        case ping
-        case text(String)
-        case data(Data)
-    }
+/// WebSocketClient Frame
+public enum WebSocketClientFrame: Sendable {
+    case ping
+    case text(String)
+    case data(Data)
 }
 
-extension WebSocketClient.FrameOpCode: CustomStringConvertible {
+extension WebSocketClientFrame: CustomStringConvertible {
     public var description: String {
         switch self {
         case .ping: return "ping"

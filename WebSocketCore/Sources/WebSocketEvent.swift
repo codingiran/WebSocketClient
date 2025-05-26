@@ -8,20 +8,18 @@
 import Foundation
 
 /// WebSocketClient Event
-public extension WebSocketClient {
-    enum Event: Sendable {
-        case connected([String: String])
-        case disconnected(String?, URLSessionWebSocketTask.CloseCode)
-        case text(String)
-        case data(Data)
-        case pong
-        case error(Error)
-    }
+public enum WebSocketClientEvent: Sendable {
+    case connected([String: String])
+    case disconnected(String?, WebSocketClientCloseCode)
+    case text(String)
+    case data(Data)
+    case pong
+    case error(Error)
 }
 
 // MARK: - WebsocketClient Status
 
-public extension WebSocketClient.Event {
+public extension WebSocketClientEvent {
     /// Check if the websocket is connected.
     var isConnected: Bool {
         switch self {
@@ -47,7 +45,7 @@ public extension WebSocketClient.Event {
 
 // MARK: - StringConvertible
 
-extension WebSocketClient.Event: CustomStringConvertible, CustomDebugStringConvertible {
+extension WebSocketClientEvent: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
         switch self {
         case .connected: return "connected"

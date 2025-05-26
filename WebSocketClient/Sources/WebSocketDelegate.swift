@@ -7,17 +7,22 @@
 
 import Foundation
 import Network
+#if swift(>=6.0)
+    public import WebSocketCore
+#else
+    @_exported import WebSocketCore
+#endif
 
 public extension WebSocketClient {
     protocol Delegate: AnyObject, Sendable {
         /// WebSocket status on change
-        func webSocketClient(_ client: WebSocketClient, didUpdate status: WebSocketClient.Status)
+        func webSocketClient(_ client: WebSocketClient, didUpdate status: WebSocketClientStatus)
 
         /// WebSocket received a message
-        func webSocketClient(_ client: WebSocketClient, didReceive event: WebSocketClient.Event)
+        func webSocketClient(_ client: WebSocketClient, didReceive event: WebSocketClientEvent)
 
         /// WebSocket output log
-        func webSocketClient(_ client: WebSocketClient, didOutput log: WebSocketClient.Log)
+        func webSocketClient(_ client: WebSocketClient, didOutput log: WebSocketClientLog)
 
         /// WebSocket will try reconnect
         func webSocketClientWillTryReconnect(_ client: WebSocketClient, forReason reason: WebSocketClient.ReconnectReason, afterDelay interval: TimeInterval)
@@ -35,9 +40,9 @@ public extension WebSocketClient {
 
 /// Default implementation
 public extension WebSocketClient.Delegate {
-    func webSocketClient(_: WebSocketClient, didUpdate _: WebSocketClient.Status) {}
-    func webSocketClient(_: WebSocketClient, didReceive _: WebSocketClient.Event) {}
-    func webSocketClient(_: WebSocketClient, didOutput _: WebSocketClient.Log) {}
+    func webSocketClient(_: WebSocketClient, didUpdate _: WebSocketClientStatus) {}
+    func webSocketClient(_: WebSocketClient, didReceive _: WebSocketClientEvent) {}
+    func webSocketClient(_: WebSocketClient, didOutput _: WebSocketClientLog) {}
     func webSocketClientDidSendAutoPing(_: WebSocketClient) {}
     func webSocketClientWillTryReconnect(_: WebSocketClient, forReason _: WebSocketClient.ReconnectReason, afterDelay _: TimeInterval) {}
     func webSocketClientDidTryReconnect(_: WebSocketClient, forReason _: WebSocketClient.ReconnectReason, withAttemptCount _: UInt) {}

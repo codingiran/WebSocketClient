@@ -9,6 +9,11 @@ import AsyncTimer
 import Foundation
 import Network
 import NetworkPathMonitor
+#if swift(>=6.0)
+    public import WebSocketCore
+#else
+    @_exported import WebSocketCore
+#endif
 
 // Enforce minimum Swift version for all platforms and build systems.
 #if swift(<5.9)
@@ -17,7 +22,7 @@ import NetworkPathMonitor
 
 public enum WebSocketClientInfo: Sendable {
     /// Current WebSocketClient version.
-    public static let version = "0.0.1"
+    public static let version = "0.0.2"
 }
 
 public final class WebSocketClient: @unchecked Sendable {
@@ -28,7 +33,7 @@ public final class WebSocketClient: @unchecked Sendable {
     public let autoPingInterval: TimeInterval
 
     /// The WebSocket backend to use. Default is `.urlSession`.
-    public let webSocketBackend: WebSocketClient.Backending
+    public let webSocketBackend: WebSocketClientBackend
 
     /// The strategy to use for reconnecting.
     public let reconnectStrategy: ReconnectStrategy
@@ -49,7 +54,7 @@ public final class WebSocketClient: @unchecked Sendable {
     private var reconnectTimer: AsyncTimer?
 
     /// The status of the WebSocket connection.
-    public private(set) var status: WebSocketClient.Status = .closed(state: .normal) {
+    public private(set) var status: WebSocketClientStatus = .closed(state: .normal) {
         didSet {
             guard status != oldValue else { return }
             Task { await self.webSocketDidChangeStatus(status) }
@@ -68,7 +73,7 @@ public final class WebSocketClient: @unchecked Sendable {
     ///   - networkMonitorDebounceInterval: The debounce interval for network path monitoring. 0 means no debounce. Default is 0 seconds.
     public required init(urlRequest: URLRequest,
                          autoPingInterval: TimeInterval = 0,
-                         backend: WebSocketClient.Backending = URLSessionBackend(),
+                         backend: WebSocketClientBackend,
                          reconnectStrategy: ReconnectStrategy = WebSocketClient.defaultReconnectStrategy,
                          networkMonitorDebounceInterval: TimeInterval = 0)
     {
@@ -103,7 +108,7 @@ public final class WebSocketClient: @unchecked Sendable {
                             connectTimeout: TimeInterval = 5,
                             httpHeaders: [String: String],
                             autoPingInterval: TimeInterval = 0,
-                            webSocketBackend: WebSocketClient.Backending = URLSessionBackend(),
+                            webSocketBackend: WebSocketClientBackend,
                             reconnectStrategy: ReconnectStrategy = WebSocketClient.defaultReconnectStrategy,
                             networkMonitorDebounceInterval: TimeInterval = 0)
     {
@@ -140,7 +145,7 @@ public extension WebSocketClient {
     /// Disconnects from the WebSocket server.
     /// - Parameter closeCode: The close code to use for the disconnection.
     /// - Parameter reason: The reason for the disconnection.
-    func disconnect(closeCode: URLSessionWebSocketTask.CloseCode = .normalClosure, reason: String? = nil) async {
+    func disconnect(closeCode: WebSocketClientCloseCode = .normalClosure, reason: String? = nil) async {
         await webSocketBackend.disconnect(closeCode: closeCode, reason: reason)
         await disableAutoPing()
         await destroyReconnectTimer(resetCount: true)
@@ -148,7 +153,7 @@ public extension WebSocketClient {
 
     /// Sends a WebSocket frame.
     /// - Parameter frame: The frame to send.
-    func send(_ frame: WebSocketClient.FrameOpCode) async throws {
+    func send(_ frame: WebSocketClientFrame) async throws {
         guard case .connected = status else {
             warningLog("websocket send \(frame.description) frame ignored, connection is not connected")
             return
@@ -167,7 +172,7 @@ public extension WebSocketClient {
 // MARK: - Status On Change
 
 private extension WebSocketClient {
-    func webSocketDidChangeStatus(_ status: WebSocketClient.Status) async {
+    func webSocketDidChangeStatus(_ status: WebSocketClientStatus) async {
         switch status {
         case .connected:
             // start auto ping
@@ -296,7 +301,7 @@ private extension WebSocketClient {
             guard let self else { return }
             Task {
                 async let _ = try? await self.ping()
-                delegate?.webSocketClientDidSendAutoPing(self)
+                self.delegate?.webSocketClientDidSendAutoPing(self)
             }
         }
         await autoPingTimer?.start()
@@ -318,7 +323,7 @@ extension WebSocketClient {
         }
     }
 
-    func didReceive(event: WebSocketClient.Event) async {
+    func didReceive(event: WebSocketClientEvent) async {
         if event.isConnected {
             status = .connected
         } else {
@@ -330,5 +335,33 @@ extension WebSocketClient {
         } else {
             await destroyReconnectTimer(resetCount: true)
         }
+    }
+}
+
+// MARK: - WebSocket Log
+
+extension WebSocketClient {
+    func log(_ log: WebSocketClientLog) {
+        delegate?.webSocketClient(self, didOutput: log)
+    }
+
+    func verboseLog(_ message: String) {
+        log(.init(level: .verbose, message: message))
+    }
+
+    func debugLog(_ message: String) {
+        log(.init(level: .debug, message: message))
+    }
+
+    func infoLog(_ message: String) {
+        log(.init(level: .info, message: message))
+    }
+
+    func warningLog(_ message: String) {
+        log(.init(level: .warning, message: message))
+    }
+
+    func errorLog(_ message: String) {
+        log(.init(level: .error, message: message))
     }
 }

@@ -7,6 +7,11 @@
 
 import Foundation
 import Network
+#if swift(>=6.0)
+    public import WebSocketCore
+#else
+    @_exported import WebSocketCore
+#endif
 
 // MARK: - Reconnect Method
 
@@ -24,7 +29,7 @@ public extension WebSocketClient {
 
 public extension WebSocketClient {
     enum ReconnectReason: Sendable, CustomStringConvertible, CustomDebugStringConvertible {
-        case suggestedEvent(WebSocketClient.Event)
+        case suggestedEvent(WebSocketClientEvent)
         case networkRecovery(NWPath)
 
         public var description: String {
@@ -69,7 +74,7 @@ public extension WebSocketClient {
         /// - Parameters:
         ///  - webSocket: The WebSocketClient instance
         ///  - event: The websocket event
-        func shouldReconnectWhenReceivingEvent(webSocket: WebSocketClient, event: WebSocketClient.Event) async -> Bool
+        func shouldReconnectWhenReceivingEvent(webSocket: WebSocketClient, event: WebSocketClientEvent) async -> Bool
     }
 
     /// Default ReconnectStrategy
@@ -86,7 +91,7 @@ public extension WebSocketClient.ReconnectStrategy {
         networkPath.isSatisfied
     }
 
-    func shouldReconnectWhenReceivingEvent(webSocket _: WebSocketClient, event: WebSocketClient.Event) async -> Bool {
+    func shouldReconnectWhenReceivingEvent(webSocket _: WebSocketClient, event: WebSocketClientEvent) async -> Bool {
         // Default implementation: reconnect when event is abnormal closed
         event.isAbnormalClosed
     }
@@ -101,7 +106,7 @@ public extension WebSocketClient {
 
         public func shouldReconnectWhenNetworkRecovered(webSocket _: WebSocketClient, networkPath _: NWPath) async -> Bool { false }
 
-        public func shouldReconnectWhenReceivingEvent(webSocket _: WebSocketClient, event _: WebSocketClient.Event) async -> Bool { false }
+        public func shouldReconnectWhenReceivingEvent(webSocket _: WebSocketClient, event _: WebSocketClientEvent) async -> Bool { false }
     }
 
     /// Exponential Backoff

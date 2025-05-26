@@ -71,11 +71,11 @@ await client.forceDisconnect()
 
 ```swift
 class WebSocketHandler: WebSocketClient.Delegate {
-    func webSocketClient(_ client: WebSocketClient, didUpdate status: WebSocketClient.Status) {
+    func webSocketClient(_ client: WebSocketClient, didUpdate status: WebSocketClientStatus) {
         print("WebSocket status changed to: \(status)")
     }
     
-    func webSocketClient(_ client: WebSocketClient, didReceive event: WebSocketClient.Event) {
+    func webSocketClient(_ client: WebSocketClient, didReceive event: WebSocketClientEvent) {
         switch event {
         case .text(let message):
             print("Received text message: \(message)")
@@ -148,7 +148,7 @@ func webSocketClient(_ client: WebSocketClient, didMonitorNetworkPathChange path
 ### Logging System
 
 ```swift
-func webSocketClient(_ client: WebSocketClient, didOutput log: WebSocketClient.Log) {
+func webSocketClient(_ client: WebSocketClient, didOutput log: WebSocketClientLog) {
     switch log.level {
     case .debug:
         print("[Debug] \(log.message)")
