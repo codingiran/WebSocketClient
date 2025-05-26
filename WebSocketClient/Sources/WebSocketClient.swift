@@ -68,12 +68,12 @@ public final class WebSocketClient: @unchecked Sendable {
     /// - Parameters:
     ///   - urlRequest: The URL request to use for the WebSocket connection.
     ///   - autoPingInterval: The interval at which to send ping frames, If set to 0, auto ping will be disabled, Default is 0 seconds.
-    ///   - backend: The WebSocket backend to use, default is `.urlSession`.
+    ///   - webSocketBackend: The WebSocket backend to use, default is `.urlSession`.
     ///   - reconnectStrategy: The strategy to use for reconnecting.
     ///   - networkMonitorDebounceInterval: The debounce interval for network path monitoring. 0 means no debounce. Default is 0 seconds.
     public required init(urlRequest: URLRequest,
                          autoPingInterval: TimeInterval = 0,
-                         backend: WebSocketClientBackend,
+                         webSocketBackend: WebSocketClientBackend,
                          reconnectStrategy: ReconnectStrategy = WebSocketClient.defaultReconnectStrategy,
                          networkMonitorDebounceInterval: TimeInterval = 0)
     {
@@ -81,7 +81,7 @@ public final class WebSocketClient: @unchecked Sendable {
         precondition(networkMonitorDebounceInterval >= 0, "networkMonitorDebounceInterval must be greater than or equal to 0")
         self.urlRequest = urlRequest
         self.autoPingInterval = autoPingInterval
-        webSocketBackend = backend
+        self.webSocketBackend = webSocketBackend
         self.reconnectStrategy = reconnectStrategy
         self.networkMonitorDebounceInterval = networkMonitorDebounceInterval
         networkMonitor = NetworkPathMonitor(debounceInterval: networkMonitorDebounceInterval)
@@ -100,7 +100,7 @@ public final class WebSocketClient: @unchecked Sendable {
     ///   - connectTimeout: The timeout interval for the connection.
     ///   - httpHeaders: The HTTP headers to include in the URL request.
     ///   - autoPingInterval: The interval at which to send ping frames, If set to 0, ping frames will not be sent.
-    ///   - backend: The WebSocket backend to use, default is `.urlSession`.
+    ///   - webSocketBackend: The WebSocket backend to use, default is `.urlSession`.
     ///   - reconnectStrategy: The strategy to use for reconnecting.
     ///   - networkMonitorDebounceInterval: The debounce interval for network path monitoring. 0 means no debounce. Default is 0 seconds.
     public convenience init(url: URL,
@@ -118,7 +118,7 @@ public final class WebSocketClient: @unchecked Sendable {
                                     timeoutInterval: connectTimeout,
                                     httpHeaders: httpHeaders),
                   autoPingInterval: autoPingInterval,
-                  backend: webSocketBackend,
+                  webSocketBackend: webSocketBackend,
                   reconnectStrategy: reconnectStrategy,
                   networkMonitorDebounceInterval: networkMonitorDebounceInterval)
     }
