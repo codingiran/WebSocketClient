@@ -23,6 +23,10 @@ let package = Package(
             name: "URLSessionWebSocketBackend",
             targets: ["URLSessionWebSocketBackend"]
         ),
+        .library(
+            name: "StarscreamBackend",
+            targets: ["StarscreamBackend"]
+        ),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
