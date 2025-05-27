@@ -20,4 +20,6 @@ public extension URLRequest {
             setValue(value, forHTTPHeaderField: key)
         }
     }
+
+    var httpHeaders: [String: String]? { allHTTPHeaderFields }
 }
