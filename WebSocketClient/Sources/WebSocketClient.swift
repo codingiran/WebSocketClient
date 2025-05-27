@@ -32,7 +32,7 @@ public final class WebSocketClient: @unchecked Sendable {
     /// The interval at which to send ping frames. If set to 0, auto ping will be disabled. Default is 0 seconds.
     public let autoPingInterval: TimeInterval
 
-    /// The WebSocket backend to use. Default is `.urlSession`.
+    /// The WebSocket backend to use.
     public let webSocketBackend: WebSocketClientBackend
 
     /// The strategy to use for reconnecting.
@@ -68,7 +68,7 @@ public final class WebSocketClient: @unchecked Sendable {
     /// - Parameters:
     ///   - urlRequest: The URL request to use for the WebSocket connection.
     ///   - autoPingInterval: The interval at which to send ping frames, If set to 0, auto ping will be disabled, Default is 0 seconds.
-    ///   - webSocketBackend: The WebSocket backend to use, default is `.urlSession`.
+    ///   - webSocketBackend: The WebSocket backend to use.
     ///   - reconnectStrategy: The strategy to use for reconnecting.
     ///   - networkMonitorDebounceInterval: The debounce interval for network path monitoring. 0 means no debounce. Default is 0 seconds.
     public required init(urlRequest: URLRequest,
@@ -100,7 +100,7 @@ public final class WebSocketClient: @unchecked Sendable {
     ///   - connectTimeout: The timeout interval for the connection.
     ///   - httpHeaders: The HTTP headers to include in the URL request.
     ///   - autoPingInterval: The interval at which to send ping frames, If set to 0, ping frames will not be sent.
-    ///   - webSocketBackend: The WebSocket backend to use, default is `.urlSession`.
+    ///   - webSocketBackend: The WebSocket backend to use.
     ///   - reconnectStrategy: The strategy to use for reconnecting.
     ///   - networkMonitorDebounceInterval: The debounce interval for network path monitoring. 0 means no debounce. Default is 0 seconds.
     public convenience init(url: URL,
