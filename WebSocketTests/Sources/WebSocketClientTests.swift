@@ -17,10 +17,10 @@ final class WebSocketClientTests: XCTestCase, @unchecked Sendable {
     }
 
     func testWebSocket(using backend: WebSocketClientBackend) async throws {
-        let url = URL(string: "wss://giasstest.ecn.zenlayer.net:8891/zga/ws?userIds=iran.qiu@zenlayer.com_2000003_2000013_315B562A-E0B4-4249-A704-AD20E93C13F8")!
+        let url = URL(string: "")!
         let headers = [
-            "x-token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTA1NzQ0MDQsImlhdCI6MTc0Nzk4MjQwNCwiaXNzIjoiVHVyYm8gWCBBcGkiLCJuYmYiOjE3NDc5ODE0MDQsIlVVSUQiOiJiMjgxODA0OC0wYjIwLTRkZTEtYTRmYi02Y2MzZDZlZWQ3ZjUiLCJHcm91cElkIjoyMDAwMDEzLCJVc2VyTmFtZSI6ImlyYW4ucWl1QHplbmxheWVyLmNvbSIsIkNvbXBhbnlJZCI6MjAwMDAwMywiY29tcGFueU5hbWUiOiJ0ZXN0X1plbmxheWVyX3ZpcCIsImJ1ZmZlclRpbWUiOjg2NDAwLCJkZXZpY2VDb2RlIjoiMzE1QjU2MkEtRTBCNC00MjQ5LUE3MDQtQUQyMEU5M0MxM0Y4In0.qD9_Sez2e-s-LgXEd3NaLmou8uXHuCHcgm9877E8jZM",
-            "x-user-id": "b2818048-0b20-4de1-a4fb-6cc3d6eed7f5",
+            "x-token": "",
+            "x-user-id": "",
         ]
         webSocketClient = WebSocketClient(url: url,
                                           connectTimeout: 5,
