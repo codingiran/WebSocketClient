@@ -59,7 +59,7 @@ let package = Package(
                 "WebSocketClientCore",
                 "URLSessionWebSocketBackend",
             ],
-            path: "WebSocketTests/Sources"
+            path: "WebSocketClientTests/Sources"
         ),
     ],
     swiftLanguageModes: [.v6]
