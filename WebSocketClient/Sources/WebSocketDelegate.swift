@@ -7,11 +7,6 @@
 
 import Foundation
 import Network
-#if swift(>=6.0)
-    public import WebSocketClientCore
-#else
-    @_exported import WebSocketClientCore
-#endif
 
 public extension WebSocketClient {
     protocol Delegate: AnyObject, Sendable {

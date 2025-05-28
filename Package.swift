@@ -35,28 +35,24 @@ let package = Package(
         .target(
             name: "WebSocketClient",
             dependencies: [
-                "WebSocketClientCore",
                 "AsyncTimer",
                 "NetworkPathMonitor",
             ],
-            path: "WebSocketClient/Sources"
+            path: "WebSocketClient/Sources",
+            resources: [.copy("../Resources/PrivacyInfo.xcprivacy")]
         ),
         .target(
             name: "URLSessionWebSocketBackend",
             dependencies: [
-                "WebSocketClientCore",
+                "WebSocketClient",
             ],
-            path: "URLSessionWebSocketBackend/Sources"
-        ),
-        .target(
-            name: "WebSocketClientCore",
-            path: "WebSocketClientCore/Sources"
+            path: "URLSessionWebSocketBackend/Sources",
+            resources: [.copy("../Resources/PrivacyInfo.xcprivacy")]
         ),
         .testTarget(
             name: "WebSocketClientTests",
             dependencies: [
                 "WebSocketClient",
-                "WebSocketClientCore",
                 "URLSessionWebSocketBackend",
             ],
             path: "WebSocketClientTests/Sources"

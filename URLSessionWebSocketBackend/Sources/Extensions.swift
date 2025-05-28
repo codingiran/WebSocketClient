@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import WebSocketClientCore
+import WebSocketClient
 
 extension URLSessionWebSocketTask.CloseCode {
     init(closeCode: WebSocketClientCloseCode) {

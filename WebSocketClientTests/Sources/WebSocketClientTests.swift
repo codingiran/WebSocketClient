@@ -1,7 +1,6 @@
 import Network
 @testable import URLSessionWebSocketBackend
 @testable import WebSocketClient
-@testable import WebSocketClientCore
 import XCTest
 
 final class WebSocketClientTests: XCTestCase, @unchecked Sendable {

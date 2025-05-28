@@ -9,11 +9,6 @@ import AsyncTimer
 import Foundation
 import Network
 import NetworkPathMonitor
-#if swift(>=6.0)
-    public import WebSocketClientCore
-#else
-    @_exported import WebSocketClientCore
-#endif
 
 // Enforce minimum Swift version for all platforms and build systems.
 #if swift(<5.9)
