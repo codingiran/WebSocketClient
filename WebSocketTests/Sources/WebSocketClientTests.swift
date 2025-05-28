@@ -1,8 +1,7 @@
 import Network
-@testable import StarscreamBackend
 @testable import URLSessionWebSocketBackend
 @testable import WebSocketClient
-@testable import WebSocketCore
+@testable import WebSocketClientCore
 import XCTest
 
 final class WebSocketClientTests: XCTestCase, @unchecked Sendable {
@@ -10,10 +9,6 @@ final class WebSocketClientTests: XCTestCase, @unchecked Sendable {
 
     func testURLSessionWebSocketBackend() async throws {
         try await testWebSocket(using: URLSessionWebSocketBackend())
-    }
-
-    func testStarscreamBackend() async throws {
-        try await testWebSocket(using: StarscreamBackend())
     }
 
     func testWebSocket(using backend: WebSocketClientBackend) async throws {

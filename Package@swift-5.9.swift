@@ -23,10 +23,6 @@ let package = Package(
             name: "URLSessionWebSocketBackend",
             targets: ["URLSessionWebSocketBackend"]
         ),
-        .library(
-            name: "StarscreamBackend",
-            targets: ["StarscreamBackend"]
-        ),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -40,7 +36,7 @@ let package = Package(
         .target(
             name: "WebSocketClient",
             dependencies: [
-                "WebSocketCore",
+                "WebSocketClientCore",
                 "AsyncTimer",
                 "NetworkPathMonitor",
             ],
@@ -49,29 +45,20 @@ let package = Package(
         .target(
             name: "URLSessionWebSocketBackend",
             dependencies: [
-                "WebSocketCore",
+                "WebSocketClientCore",
             ],
             path: "URLSessionWebSocketBackend/Sources"
         ),
         .target(
-            name: "WebSocketCore",
-            path: "WebSocketCore/Sources"
-        ),
-        .target(
-            name: "StarscreamBackend",
-            dependencies: [
-                "WebSocketCore",
-                "Starscream",
-            ],
-            path: "StarscreamBackend/Sources"
+            name: "WebSocketClientCore",
+            path: "WebSocketClientCore/Sources"
         ),
         .testTarget(
             name: "WebSocketClientTests",
             dependencies: [
                 "WebSocketClient",
-                "WebSocketCore",
+                "WebSocketClientCore",
                 "URLSessionWebSocketBackend",
-                "StarscreamBackend",
             ],
             path: "WebSocketTests/Sources"
         ),

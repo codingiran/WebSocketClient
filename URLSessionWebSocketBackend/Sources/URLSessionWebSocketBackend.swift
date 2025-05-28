@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import WebSocketCore
+import WebSocketClientCore
 
 public final class URLSessionWebSocketBackend: NSObject, @unchecked Sendable {
     private var webSocketTask: URLSessionWebSocketTask?

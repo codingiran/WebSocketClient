@@ -10,9 +10,9 @@ import Foundation
 import Network
 import NetworkPathMonitor
 #if swift(>=6.0)
-    public import WebSocketCore
+    public import WebSocketClientCore
 #else
-    @_exported import WebSocketCore
+    @_exported import WebSocketClientCore
 #endif
 
 // Enforce minimum Swift version for all platforms and build systems.
