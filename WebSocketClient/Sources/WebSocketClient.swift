@@ -131,7 +131,7 @@ public extension WebSocketClient {
             warningLog("websocket connect ignored for current status is \(status.description)")
             return false
         }
-        debugLog("websocket start connecting")
+        debugLog("websocket start connecting \(urlRequest.url?.absoluteString ?? "")")
         status = .connecting
         await webSocketBackend.connect(request: urlRequest)
         return true
