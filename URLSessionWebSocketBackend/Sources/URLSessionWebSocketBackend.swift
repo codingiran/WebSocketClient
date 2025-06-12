@@ -83,7 +83,7 @@ private extension URLSessionWebSocketBackend {
     }
 }
 
-extension URLSessionWebSocketBackend: URLSessionDataDelegate, URLSessionWebSocketDelegate {
+extension URLSessionWebSocketBackend: URLSessionWebSocketDelegate {
     public func urlSession(_: URLSession, webSocketTask _: URLSessionWebSocketTask, didOpenWithProtocol p: String?) {
         var map: [String: String] = [:]
         if let p {
@@ -98,13 +98,5 @@ extension URLSessionWebSocketBackend: URLSessionDataDelegate, URLSessionWebSocke
             return String(data: reason, encoding: .utf8)
         }()
         didReceive(event: .disconnected(reasonText, .init(closeCode: closeCode)))
-    }
-
-    public func urlSession(_: URLSession, task _: URLSessionTask, didCompleteWithError error: (any Error)?) {
-        guard let error else {
-            didReceive(event: .disconnected(nil, .normalClosure))
-            return
-        }
-        didReceive(event: .error(error))
     }
 }
