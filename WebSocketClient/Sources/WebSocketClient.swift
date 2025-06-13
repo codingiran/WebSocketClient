@@ -198,16 +198,13 @@ private extension WebSocketClient {
             verboseLog("skip reconnect for current status is \(status.description)")
             return
         }
-        // ask reconnect strategy if reconnect is suggested in this network path
-        guard await reconnectStrategy.shouldReconnectWhenNetworkRecovered(webSocket: self, networkPath: path) else {
-            debugLog("network recovered, but reconnect is not suggested")
-            return
-        }
-        debugLog("network recovered, try reconnect")
-        await reconnect(reason: .networkRecovery(path))
+        // ask reconnect strategy if reconnect is immediate
+        let shouldReconnectImmediately = await reconnectStrategy.shouldReconnectImmediatelyWhenNetworkRecovered(webSocket: self, networkPath: path)
+        debugLog("network recovered, try reconnect immediately: \(shouldReconnectImmediately)")
+        await reconnect(reason: .networkRecovery(path), shouldImmediately: shouldReconnectImmediately)
     }
 
-    func reconnect(reason: ReconnectReason) async {
+    func reconnect(reason: ReconnectReason, shouldImmediately: Bool = false) async {
         if case .connecting = status {
             // skip reconnect for duplicate connecting
             debugLog("skip reconnect for current status is \(status.description)")
@@ -230,27 +227,29 @@ private extension WebSocketClient {
                 debugLog("current status is \(status.description), should disconnect before reconnect")
                 await disconnect(closeCode: .normalClosure)
             }
-            await scheduleReconnectTimer(interval: interval, reason: reason)
+            await scheduleReconnectTimer(interval: shouldImmediately ? 0 : interval, reason: reason)
         }
     }
 
     func scheduleReconnectTimer(interval: TimeInterval, reason: ReconnectReason) async {
         debugLog("schedule \(reconnectCount)th reconnect attempt after \(interval) seconds, reason: \(reason.debugDescription) ")
         await destroyReconnectTimer(resetCount: false)
+        delegate?.webSocketClientWillTryReconnect(self, forReason: reason, afterDelay: interval)
+        guard interval > 0 else {
+            await excuteReconnect(for: reason)
+            return
+        }
         reconnectTimer = AsyncTimer(interval: interval, repeating: false) { [weak self] in
             guard let self else { return }
-            if await connect() {
-                // reconnect is started
-                increaseAttemptCount()
-                delegate?.webSocketClientDidTryReconnect(self, forReason: reason, withAttemptCount: reconnectCount)
-            }
+            await excuteReconnect(for: reason)
         }
-        delegate?.webSocketClientWillTryReconnect(self, forReason: reason, afterDelay: interval)
         await reconnectTimer?.start()
     }
 
-    func increaseAttemptCount() {
+    func excuteReconnect(for reason: ReconnectReason) async {
+        guard await connect() else { return }
         reconnectCount += 1
+        delegate?.webSocketClientDidTryReconnect(self, forReason: reason, withAttemptCount: reconnectCount)
     }
 
     func destroyReconnectTimer(resetCount: Bool = false) async {
@@ -294,10 +293,8 @@ private extension WebSocketClient {
         guard autoPingInterval > 0 else { return }
         autoPingTimer = AsyncTimer(interval: autoPingInterval, repeating: true, firesImmediately: true) { [weak self] in
             guard let self else { return }
-            Task {
-                async let _ = try? await self.ping()
-                self.delegate?.webSocketClientDidSendAutoPing(self)
-            }
+            async let _ = try? await ping()
+            delegate?.webSocketClientDidSendAutoPing(self)
         }
         await autoPingTimer?.start()
     }
@@ -319,10 +316,12 @@ extension WebSocketClient {
     }
 
     func didReceive(event: WebSocketClientEvent) async {
-        if event.isConnected {
+        if case .connected = event {
             status = .connected
-        } else {
-            status = .closed(state: event.isAbnormalClosed ? .abnormal : .normal)
+        } else if case let .disconnected(_, code) = event {
+            status = .closed(state: code.isAbnormalClosed ? .abnormal : .normal)
+        } else if case .error = event {
+            status = .closed(state: .abnormal)
         }
         delegate?.webSocketClient(self, didReceive: event)
         if await reconnectStrategy.shouldReconnectWhenReceivingEvent(webSocket: self, event: event) {
