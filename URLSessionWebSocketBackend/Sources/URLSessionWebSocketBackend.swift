@@ -13,6 +13,8 @@ public final class URLSessionWebSocketBackend: NSObject, @unchecked Sendable {
 
     private var eventContinuation: AsyncStream<WebSocketClientEvent>.Continuation?
 
+    private var onReceiveTask: Task<Void, Never>?
+
     override public init() {
         super.init()
     }
@@ -20,12 +22,18 @@ public final class URLSessionWebSocketBackend: NSObject, @unchecked Sendable {
 
 extension URLSessionWebSocketBackend: WebSocketClientBackend {
     public func connect(request: URLRequest) async {
-        webSocketTask = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
-            .webSocketTask(with: request)
-        Task(priority: .medium) {
-            await self.receive()
+        if let webSocketTask {
+            webSocketTask.cancel()
+            self.webSocketTask = nil
         }
-        webSocketTask?.resume()
+        let urlSessionWebSocketTask = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+            .webSocketTask(with: request)
+        cancelOnReceiveTask()
+        onReceiveTask = Task {
+            await self.receiveWebSocket(urlSessionWebSocketTask)
+        }
+        urlSessionWebSocketTask.resume()
+        webSocketTask = urlSessionWebSocketTask
     }
 
     public func disconnect(closeCode: WebSocketClientCloseCode, reason: String?) async {
@@ -58,18 +66,22 @@ extension URLSessionWebSocketBackend: WebSocketClientBackend {
 }
 
 private extension URLSessionWebSocketBackend {
-    func receive() async {
-        guard let task = webSocketTask else { return }
+    func receiveWebSocket(_ webSocket: URLSessionWebSocketTask) async {
         do {
-            let message = try await task.receive()
+            if Task.isCancelled { return }
+            let message = try await webSocket.receive()
+            if Task.isCancelled { return }
             switch message {
             case let .string(text): didReceive(event: .text(text))
             case let .data(data): didReceive(event: .data(data))
             @unknown default: break
             }
-            await receive()
+            if Task.isCancelled { return }
+            await receiveWebSocket(webSocket)
         } catch {
+            if Task.isCancelled { return }
             didReceive(event: .error(error))
+            cancelOnReceiveTask()
         }
     }
 
@@ -98,5 +110,11 @@ extension URLSessionWebSocketBackend: URLSessionWebSocketDelegate {
             return String(data: reason, encoding: .utf8)
         }()
         didReceive(event: .disconnected(reasonText, .init(closeCode: closeCode)))
+        cancelOnReceiveTask()
+    }
+
+    private func cancelOnReceiveTask() {
+        onReceiveTask?.cancel()
+        onReceiveTask = nil
     }
 }

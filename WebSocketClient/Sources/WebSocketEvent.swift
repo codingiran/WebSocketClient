@@ -20,16 +20,6 @@ public enum WebSocketClientEvent: Sendable {
 // MARK: - WebsocketClient Status
 
 public extension WebSocketClientEvent {
-    /// Check if the websocket is connected.
-    var isConnected: Bool {
-        switch self {
-        case .connected, .text, .data, .pong:
-            return true
-        default:
-            return false
-        }
-    }
-
     /// Check if the websocket is closed abnormally.
     var isAbnormalClosed: Bool {
         switch self {

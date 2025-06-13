@@ -59,11 +59,11 @@ public extension WebSocketClient {
         ///  - networkPath: The current network path
         func reconnectMethod(webSocket: WebSocketClient, reconnectReason: ReconnectReason, reconnectCount: UInt, networkPath: NWPath) async -> ReconnectMethod
 
-        /// Whether to reconnect when the network is recovered
+        /// Whether to reconnect immediately when the network is recovered
         /// - Parameters:
         ///  - webSocket: The WebSocketClient instance
         ///  - networkPath: The current network path
-        func shouldReconnectWhenNetworkRecovered(webSocket: WebSocketClient, networkPath: NWPath) async -> Bool
+        func shouldReconnectImmediatelyWhenNetworkRecovered(webSocket: WebSocketClient, networkPath: NWPath) async -> Bool
 
         /// Whether to reconnect when receiving specific websocket event
         /// - Parameters:
@@ -81,7 +81,7 @@ public extension WebSocketClient {
 // MARK: - Default Strategy Implementation
 
 public extension WebSocketClient.ReconnectStrategy {
-    func shouldReconnectWhenNetworkRecovered(webSocket _: WebSocketClient, networkPath: NWPath) async -> Bool {
+    func shouldReconnectImmediatelyWhenNetworkRecovered(webSocket _: WebSocketClient, networkPath: NWPath) async -> Bool {
         // Default implementation: reconnect after network is recovered
         networkPath.isSatisfied
     }
@@ -99,7 +99,7 @@ public extension WebSocketClient {
     struct NoReconnectStrategy: ReconnectStrategy, Sendable {
         public func reconnectMethod(webSocket _: WebSocketClient, reconnectReason _: WebSocketClient.ReconnectReason, reconnectCount _: UInt, networkPath _: NWPath) async -> ReconnectMethod { .none("") }
 
-        public func shouldReconnectWhenNetworkRecovered(webSocket _: WebSocketClient, networkPath _: NWPath) async -> Bool { false }
+        public func shouldReconnectImmediatelyWhenNetworkRecovered(webSocket _: WebSocketClient, networkPath _: NWPath) async -> Bool { false }
 
         public func shouldReconnectWhenReceivingEvent(webSocket _: WebSocketClient, event _: WebSocketClientEvent) async -> Bool { false }
     }

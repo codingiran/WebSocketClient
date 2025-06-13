@@ -11,15 +11,15 @@ final class WebSocketClientTests: XCTestCase, @unchecked Sendable {
     }
 
     func testWebSocket(using backend: WebSocketClientBackend) async throws {
-        let url = URL(string: "")!
+        let url = URL(string: "wss://giasstest.ecn.zenlayer.net:2001/daemon/ws?userIds=iran.qiu@zenlayer.com_5854533291304960_8266BC59-6F80-5623-9A7B-6E265566DF67")!
         let headers = [
-            "x-token": "",
-            "x-user-id": "",
+            "x-token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3ODA5NzM2NTksImlhdCI6MTc0OTQzNzY1OSwiaXNzIjoiWnVyYm8gQ2xpZW50IFNlcnZlciIsIm5iZiI6MTc0OTQzNjY1OSwidXVpZCI6IjIxNTcxOGUxLTk3ZjItNGY1Yy05NjJmLTY1ZTEwMmY3MGMwZCIsInVzZXJOYW1lIjoiaXJhbi5xaXVAemVubGF5ZXIuY29tIiwiY29tcGFueUlkIjo1ODU0NTMzMjkxMzA0OTYwLCJjb21wYW55TmFtZSI6IlplbmxheWVyIiwiYnVmZmVyVGltZSI6ODY0MDAsInVzZXJJZCI6MTA3NDkzOTgwMTExNTAzNDZ9.I1rbRjVpdQvkRYmKJvDgE0DCY1daUTnEhjgBw0LyAQs",
+            "x-user-id": "215718e1-97f2-4f5c-962f-65e102f70c0d",
         ]
         webSocketClient = WebSocketClient(url: url,
                                           connectTimeout: 5,
                                           httpHeaders: headers,
-                                          autoPingInterval: 10000,
+                                          autoPingInterval: 10,
                                           webSocketBackend: backend,
                                           networkMonitorDebounceInterval: 1.0)
         webSocketClient?.delegate = self
