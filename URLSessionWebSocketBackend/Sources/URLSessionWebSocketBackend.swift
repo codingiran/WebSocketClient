@@ -22,16 +22,12 @@ public final class URLSessionWebSocketBackend: NSObject, @unchecked Sendable {
 
 extension URLSessionWebSocketBackend: WebSocketClientBackend {
     public func connect(request: URLRequest) async {
-        if let webSocketTask {
-            webSocketTask.cancel()
-            self.webSocketTask = nil
-        }
+        cancelOnReceiveTask()
+        webSocketTask?.cancel()
+        webSocketTask = nil
         let urlSessionWebSocketTask = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
             .webSocketTask(with: request)
-        cancelOnReceiveTask()
-        onReceiveTask = Task {
-            await self.receiveWebSocket(urlSessionWebSocketTask)
-        }
+        onReceiveTask = Task { await self.receiveWebSocket(urlSessionWebSocketTask) }
         urlSessionWebSocketTask.resume()
         webSocketTask = urlSessionWebSocketTask
     }
@@ -86,6 +82,7 @@ private extension URLSessionWebSocketBackend {
     }
 
     func didReceive(event: WebSocketClientEvent) {
+        guard let _ = webSocketTask else { return }
         guard let eventContinuation: AsyncStream<WebSocketClientEvent>.Continuation else { return }
         eventContinuation.yield(event)
     }
@@ -98,9 +95,7 @@ private extension URLSessionWebSocketBackend {
 extension URLSessionWebSocketBackend: URLSessionWebSocketDelegate {
     public func urlSession(_: URLSession, webSocketTask _: URLSessionWebSocketTask, didOpenWithProtocol p: String?) {
         var map: [String: String] = [:]
-        if let p {
-            map["Sec-WebSocket-Protocol"] = p
-        }
+        if let p { map["Sec-WebSocket-Protocol"] = p }
         didReceive(event: .connected(map))
     }
 
