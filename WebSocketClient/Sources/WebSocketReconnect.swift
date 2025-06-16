@@ -106,7 +106,7 @@ public extension WebSocketClient {
 
     /// Exponential Backoff
     struct ExponentialReconnectStrategy: WebSocketClient.ReconnectStrategy, Sendable {
-        private let exponentialBackoffBase: UInt
+        private let exponentialBackoffBase: Double
         private let exponentialBackoffScale: Double
         private let maxRetryCount: UInt
         private let maxRetryInterval: TimeInterval
@@ -119,7 +119,7 @@ public extension WebSocketClient {
         ///   - maxRetryCount: The maximum number of retry attempts. Default is .max.
         ///   - maxRetryInterval: The maximum retry interval. Default is 10 minutes.
         ///   - delayJitter: The jitter range of the delay. Default is 0.2.
-        public init(exponentialBackoffBase: UInt = 2,
+        public init(exponentialBackoffBase: Double = 2,
                     exponentialBackoffScale: Double = 0.5,
                     maxRetryCount: UInt = .max,
                     maxRetryInterval: TimeInterval = 10 * 60,
@@ -135,7 +135,7 @@ public extension WebSocketClient {
         public func reconnectMethod(webSocket _: WebSocketClient, reconnectReason _: WebSocketClient.ReconnectReason, reconnectCount: UInt, networkPath: NWPath) async -> ReconnectMethod {
             guard networkPath.isSatisfied else { return .noneForUnSatisfiedNetwork }
             guard reconnectCount < maxRetryCount else { return .noneForMaxRetryCount }
-            let intervel = pow(Double(exponentialBackoffBase), Double(reconnectCount)) * exponentialBackoffScale
+            let intervel = pow(exponentialBackoffBase, Double(reconnectCount)) * exponentialBackoffScale
             let delay = min(intervel, maxRetryInterval)
             let jitterRange = delay * delayJitter
             let randomJitter = Double.random(in: -jitterRange ... jitterRange)
