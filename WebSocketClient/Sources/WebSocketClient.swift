@@ -11,13 +11,13 @@ import Network
 import NetworkPathMonitor
 
 // Enforce minimum Swift version for all platforms and build systems.
-#if swift(<5.9)
-    #error("WebSocketClient doesn't support Swift versions below 5.9")
+#if swift(<5.10)
+    #error("WebSocketClient doesn't support Swift versions below 5.10)
 #endif
 
 public enum WebSocketClientInfo: Sendable {
     /// Current WebSocketClient version.
-    public static let version = "0.0.2"
+    public static let version = "0.0.3"
 }
 
 public final class WebSocketClient: @unchecked Sendable {

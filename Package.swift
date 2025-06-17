@@ -39,7 +39,7 @@ let package = Package(
                 "NetworkPathMonitor",
             ],
             path: "WebSocketClient/Sources",
-            resources: [.copy("../Resources/PrivacyInfo.xcprivacy")]
+            resources: [.copy("PrivacyInfo.xcprivacy")]
         ),
         .target(
             name: "URLSessionWebSocketBackend",
@@ -47,7 +47,7 @@ let package = Package(
                 "WebSocketClient",
             ],
             path: "URLSessionWebSocketBackend/Sources",
-            resources: [.copy("../Resources/PrivacyInfo.xcprivacy")]
+            resources: [.copy("PrivacyInfo.xcprivacy")]
         ),
         .testTarget(
             name: "WebSocketClientTests",
