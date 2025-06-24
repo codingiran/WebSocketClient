@@ -21,8 +21,8 @@ final class WebSocketClientTests: XCTestCase, @unchecked Sendable {
                                           httpHeaders: headers,
                                           autoPingInterval: 10,
                                           webSocketBackend: backend,
-                                          networkMonitorDebounceInterval: 1.0)
-        webSocketClient?.delegate = self
+                                          networkMonitorDebounceInterval: 1.0,
+                                          delegate: self)
         await webSocketClient?.connect()
 
         let connectExpectation = expectation(description: "Connected successfully")
