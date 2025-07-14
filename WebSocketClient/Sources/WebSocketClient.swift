@@ -17,7 +17,7 @@ import NetworkPathMonitor
 
 public enum WebSocketClientInfo: Sendable {
     /// Current WebSocketClient version.
-    public static let version = "0.0.4"
+    public static let version = "0.0.5"
 }
 
 public final actor WebSocketClient: Sendable {
@@ -77,7 +77,7 @@ public final actor WebSocketClient: Sendable {
         self.reconnectStrategy = reconnectStrategy
         self.networkMonitorDebounceInterval = networkMonitorDebounceInterval
         self.delegate = delegate
-        networkMonitor = NetworkPathMonitor(debounceInterval: networkMonitorDebounceInterval)
+        networkMonitor = NetworkPathMonitor(debounceInterval: .seconds(networkMonitorDebounceInterval))
         Task {
             // start network path monitoring
             await self.startWatchingNetworkPath()
