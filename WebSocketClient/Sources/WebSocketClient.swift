@@ -17,7 +17,7 @@ import NetworkPathMonitor
 
 public enum WebSocketClientInfo: Sendable {
     /// Current WebSocketClient version.
-    public static let version = "0.0.5"
+    public static let version = "0.0.6"
 }
 
 public final actor WebSocketClient: Sendable {
@@ -284,7 +284,7 @@ extension WebSocketClient {
         await networkMonitor.pathOnChange { [weak self] path in
             guard let self else { return }
             await delegate?.webSocketClient(self, didMonitorNetworkPathChange: path)
-            guard path.isSatisfied else {
+            guard path.status == .satisfied else {
                 await debugLog("network is not satisfied, path is \(path.debugDescription)")
                 return
             }

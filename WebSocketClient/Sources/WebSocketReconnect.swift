@@ -83,7 +83,7 @@ public extension WebSocketClient {
 public extension WebSocketClient.ReconnectStrategy {
     func shouldReconnectImmediatelyWhenNetworkRecovered(webSocket _: WebSocketClient, networkPath: NWPath) async -> Bool {
         // Default implementation: reconnect after network is recovered
-        networkPath.isSatisfied
+        networkPath.status == .satisfied
     }
 
     func shouldReconnectWhenReceivingEvent(webSocket _: WebSocketClient, event: WebSocketClientEvent) async -> Bool {
@@ -133,7 +133,7 @@ public extension WebSocketClient {
         }
 
         public func reconnectMethod(webSocket _: WebSocketClient, reconnectReason _: WebSocketClient.ReconnectReason, reconnectCount: UInt, networkPath: NWPath) async -> ReconnectMethod {
-            guard networkPath.isSatisfied else { return .noneForUnSatisfiedNetwork }
+            guard networkPath.status == .satisfied else { return .noneForUnSatisfiedNetwork }
             guard reconnectCount < maxRetryCount else { return .noneForMaxRetryCount }
             let intervel = pow(exponentialBackoffBase, Double(reconnectCount)) * exponentialBackoffScale
             let delay = min(intervel, maxRetryInterval)
@@ -158,7 +158,7 @@ public extension WebSocketClient {
         }
 
         public func reconnectMethod(webSocket _: WebSocketClient, reconnectReason _: WebSocketClient.ReconnectReason, reconnectCount: UInt, networkPath: NWPath) async -> ReconnectMethod {
-            guard networkPath.isSatisfied else { return .noneForUnSatisfiedNetwork }
+            guard networkPath.status == .satisfied else { return .noneForUnSatisfiedNetwork }
             guard reconnectCount < maxRetryCount else { return .noneForMaxRetryCount }
             return .delay(fixedDelay)
         }
@@ -182,7 +182,7 @@ public extension WebSocketClient {
         }
 
         public func reconnectMethod(webSocket _: WebSocketClient, reconnectReason _: WebSocketClient.ReconnectReason, reconnectCount: UInt, networkPath: NWPath) async -> ReconnectMethod {
-            guard networkPath.isSatisfied else { return .noneForUnSatisfiedNetwork }
+            guard networkPath.status == .satisfied else { return .noneForUnSatisfiedNetwork }
             guard reconnectCount < maxRetryCount else { return .noneForMaxRetryCount }
             return .delay(min(linearDelay * Double(reconnectCount), maxRetryInterval))
         }
