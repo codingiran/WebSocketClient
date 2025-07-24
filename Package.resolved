@@ -1,5 +1,5 @@
 {
-  "originHash" : "d93806b78d55712d7cfe95a8f9eed884c2d86f8cbd13b783208fd722b36ffe6e",
+  "originHash" : "fd1dc3166cfc80c5f82013373733a6f296bff6c1f69982405dbb18b9bf97e5af",
   "pins" : [
     {
       "identity" : "asynctimer",
@@ -24,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/codingiran/NetworkPathMonitor.git",
       "state" : {
-        "revision" : "ca9c4b3128afe14e2af86af610712b8a8f6d32f9",
-        "version" : "0.1.0"
+        "revision" : "78780fcd050df5de13f67d05618a8ec42855516a",
+        "version" : "0.1.1"
       }
     }
   ],
