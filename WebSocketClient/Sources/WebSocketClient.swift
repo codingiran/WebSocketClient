@@ -7,7 +7,6 @@
 
 import AsyncTimer
 import Foundation
-import Network
 import NetworkPathMonitor
 
 // Enforce minimum Swift version for all platforms and build systems.
@@ -205,7 +204,7 @@ private extension WebSocketClient {
 // MARK: - Reconnect
 
 private extension WebSocketClient {
-    func tryReconnectAfterNetworkRecovery(path: NWPath) async {
+    func tryReconnectAfterNetworkRecovery(path: NetworkPath) async {
         guard case let .closed(state) = status,
               state.isAbnormal
         else {
@@ -284,8 +283,12 @@ extension WebSocketClient {
         await networkMonitor.pathOnChange { [weak self] path in
             guard let self else { return }
             await delegate?.webSocketClient(self, didMonitorNetworkPathChange: path)
-            guard path.status == .satisfied else {
+            guard path.isSatisfied else {
                 await debugLog("network is not satisfied, path is \(path.debugDescription)")
+                return
+            }
+            guard !path.isFirstUpdate else {
+                await verboseLog("network is satisfied, path is \(path.debugDescription), ignore for first update")
                 return
             }
             await debugLog("network is satisfied, path is \(path.debugDescription)")

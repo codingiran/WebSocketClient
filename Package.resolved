@@ -1,5 +1,5 @@
 {
-  "originHash" : "ad2c4e63dc462fde0425bc841ca0f53e1310c0d7bb71b3acba7eb0e1ca1dd995",
+  "originHash" : "d93806b78d55712d7cfe95a8f9eed884c2d86f8cbd13b783208fd722b36ffe6e",
   "pins" : [
     {
       "identity" : "asynctimer",
@@ -11,12 +11,21 @@
       }
     },
     {
+      "identity" : "networkkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/codingiran/NetworkKit.git",
+      "state" : {
+        "revision" : "d0e31a6839943468e9de4057447a622ce27dfafa",
+        "version" : "0.2.8"
+      }
+    },
+    {
       "identity" : "networkpathmonitor",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/codingiran/NetworkPathMonitor.git",
       "state" : {
-        "revision" : "2a8f690f8e18366c8fb2e67e298c6b3a551a2d53",
-        "version" : "0.0.7"
+        "revision" : "ca9c4b3128afe14e2af86af610712b8a8f6d32f9",
+        "version" : "0.1.0"
       }
     }
   ],

@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Network
+import NetworkPathMonitor
 
 public extension WebSocketClient {
     protocol Delegate: AnyObject, Sendable {
@@ -29,17 +29,17 @@ public extension WebSocketClient {
         func webSocketClientDidSendAutoPing(_ client: WebSocketClient)
 
         /// WebSocket did monitor network path change
-        func webSocketClient(_ client: WebSocketClient, didMonitorNetworkPathChange path: NWPath)
+        func webSocketClient(_ client: WebSocketClient, didMonitorNetworkPathChange path: NetworkPath)
     }
 }
 
 /// Default implementation
 public extension WebSocketClient.Delegate {
-    func webSocketClient(_: WebSocketClient, didUpdate _: WebSocketClientStatus) {}
-    func webSocketClient(_: WebSocketClient, didReceive _: WebSocketClientEvent) {}
-    func webSocketClient(_: WebSocketClient, didOutput _: WebSocketClientLog) {}
+    func webSocketClient(_ client: WebSocketClient, didUpdate status: WebSocketClientStatus) {}
+    func webSocketClient(_ client: WebSocketClient, didReceive event: WebSocketClientEvent) {}
+    func webSocketClient(_ client: WebSocketClient, didOutput log: WebSocketClientLog) {}
     func webSocketClientDidSendAutoPing(_: WebSocketClient) {}
-    func webSocketClientWillTryReconnect(_: WebSocketClient, forReason _: WebSocketClient.ReconnectReason, afterDelay _: TimeInterval) {}
-    func webSocketClientDidTryReconnect(_: WebSocketClient, forReason _: WebSocketClient.ReconnectReason, withAttemptCount _: UInt) {}
-    func webSocketClient(_: WebSocketClient, didMonitorNetworkPathChange _: NWPath) {}
+    func webSocketClientWillTryReconnect(_ client: WebSocketClient, forReason reason: WebSocketClient.ReconnectReason, afterDelay interval: TimeInterval) {}
+    func webSocketClientDidTryReconnect(_ client: WebSocketClient, forReason reason: WebSocketClient.ReconnectReason, withAttemptCount attemptCount: UInt) {}
+    func webSocketClient(_ client: WebSocketClient, didMonitorNetworkPathChange path: NetworkPath) {}
 }

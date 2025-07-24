@@ -1,4 +1,3 @@
-import Network
 @testable import URLSessionWebSocketBackend
 @testable import WebSocketClient
 import XCTest
@@ -42,32 +41,32 @@ final class WebSocketClientTests: XCTestCase, @unchecked Sendable {
 
 extension WebSocketClientTests: WebSocketClient.Delegate {
     /// WebSocket status on change
-    func webSocketClient(_: WebSocketClient, didUpdate status: WebSocketClientStatus) {
+    func webSocketClient(_ client: WebSocketClient, didUpdate status: WebSocketClientStatus) {
         print("WebSocket status: \(status.description)")
     }
 
     /// WebSocket received a message
-    func webSocketClient(_: WebSocketClient, didReceive event: WebSocketClientEvent) {
+    func webSocketClient(_ client: WebSocketClient, didReceive event: WebSocketClientEvent) {
         print("WebSocket received event: \(event.debugDescription)")
     }
 
     /// WebSocket output log
-    func webSocketClient(_: WebSocketClient, didOutput log: WebSocketClientLog) {
+    func webSocketClient(_ client: WebSocketClient, didOutput log: WebSocketClientLog) {
         print("WebSocket log: \(log.message)")
     }
 
     /// WebSocket will try reconnect
-    func webSocketClientWillTryReconnect(_: WebSocketClient, forReason reason: WebSocketClient.ReconnectReason, afterDelay interval: TimeInterval) {
+    func webSocketClientWillTryReconnect(_ client: WebSocketClient, forReason reason: WebSocketClient.ReconnectReason, afterDelay interval: TimeInterval) {
         print("WebSocket will try reconnect for reason: \(reason.description) after delay: \(interval)")
     }
 
     /// WebSocket did try reconnect
-    func webSocketClientDidTryReconnect(_: WebSocketClient, forReason reason: WebSocketClient.ReconnectReason, withAttemptCount attemptCount: UInt) {
+    func webSocketClientDidTryReconnect(_ client: WebSocketClient, forReason reason: WebSocketClient.ReconnectReason, withAttemptCount attemptCount: UInt) {
         print("WebSocket did try reconnect for reason: \(reason.description) with attempt count: \(attemptCount)")
     }
 
     /// WebSocket did send auto ping
-    func webSocketClientDidSendAutoPing(_: WebSocketClient) {
+    func webSocketClientDidSendAutoPing(_ client: WebSocketClient) {
         print("WebSocket did send auto ping")
     }
 }

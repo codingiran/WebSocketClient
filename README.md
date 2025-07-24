@@ -140,7 +140,7 @@ let client = WebSocketClient(url: url,
                             networkMonitorDebounceInterval: 1.0) // 1 second debounce
 
 // Implement the delegate method
-func webSocketClient(_ client: WebSocketClient, didMonitorNetworkPathChange path: NWPath) {
+func webSocketClient(_ client: WebSocketClient, didMonitorNetworkPathChange path: NetworkPath) {
     print("Network path changed: \(path.status)")
 }
 ```
