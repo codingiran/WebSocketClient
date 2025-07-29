@@ -16,7 +16,7 @@ import NetworkPathMonitor
 
 public enum WebSocketClientInfo: Sendable {
     /// Current WebSocketClient version.
-    public static let version = "0.0.9"
+    public static let version = "0.1.0"
 }
 
 public final actor WebSocketClient: Sendable {
@@ -253,7 +253,7 @@ private extension WebSocketClient {
             await excuteReconnect(for: reason)
             return
         }
-        reconnectTimer = AsyncTimer(interval: interval, repeating: false) { [weak self] in
+        reconnectTimer = AsyncTimer(interval: .seconds(interval), repeating: false) { [weak self] in
             guard let self else { return }
             await excuteReconnect(for: reason)
         }
@@ -309,7 +309,7 @@ private extension WebSocketClient {
     func enableAutoPing() async {
         await disableAutoPing()
         guard autoPingInterval > 0 else { return }
-        autoPingTimer = AsyncTimer(interval: autoPingInterval, repeating: true, firesImmediately: true) { [weak self] in
+        autoPingTimer = AsyncTimer(interval: .seconds(autoPingInterval), repeating: true, firesImmediately: true) { [weak self] in
             guard let self else { return }
             async let _ = try? await ping()
             await delegate?.webSocketClientDidSendAutoPing(self)
