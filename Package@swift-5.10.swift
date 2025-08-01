@@ -27,7 +27,7 @@ let package = Package(
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         .package(url: "https://github.com/codingiran/AsyncTimer.git", from: "0.0.6"),
-        .package(url: "https://github.com/codingiran/NetworkPathMonitor.git", from: "0.1.4"),
+        .package(url: "https://github.com/codingiran/NetworkPathMonitor.git", from: "0.1.5"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
