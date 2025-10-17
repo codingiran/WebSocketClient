@@ -35,6 +35,7 @@ extension URLSessionWebSocketBackend: WebSocketClientBackend {
     public func disconnect(closeCode: WebSocketClientCloseCode, reason: String?) async {
         guard let task = webSocketTask else { return }
         task.cancel(with: .init(closeCode: closeCode), reason: reason?.data(using: .utf8))
+        webSocketTask = nil
     }
 
     public func write(frame: WebSocketClientFrame) async throws {
