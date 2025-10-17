@@ -16,7 +16,7 @@ import NetworkPathMonitor
 
 public enum WebSocketClientInfo: Sendable {
     /// Current WebSocketClient version.
-    public static let version = "0.1.1"
+    public static let version = "0.1.2"
 }
 
 public final actor WebSocketClient: Sendable {
