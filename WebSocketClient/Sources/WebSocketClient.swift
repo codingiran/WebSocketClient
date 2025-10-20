@@ -16,10 +16,10 @@ import NetworkPathMonitor
 
 public enum WebSocketClientInfo: Sendable {
     /// Current WebSocketClient version.
-    public static let version = "0.1.2"
+    public static let version = "0.1.3"
 }
 
-public final actor WebSocketClient: Sendable {
+public actor WebSocketClient: Sendable {
     /// The URL request used to establish the WebSocket connection.
     public let urlRequest: URLRequest
 
@@ -47,10 +47,16 @@ public final actor WebSocketClient: Sendable {
     /// Reconnect timer.
     private var reconnectTimer: AsyncTimer?
 
+    /// The task that waits for websocket events.
+    private var eventListeningTask: Task<Void, Never>?
+
+    /// Flag to track if websocket client is prepared for running.
+    private var isRunningPrepared: Bool = false
+
     /// The status of the WebSocket connection.
     public private(set) var status: WebSocketClientStatus = .closed(state: .normal)
 
-    /// The delegate of the WebSocket client.
+    /// The delegate of the WebSocketClient.
     private weak var delegate: WebSocketClient.Delegate?
 
     /// Initializes a new `WebSocketClient` instance.
@@ -77,12 +83,6 @@ public final actor WebSocketClient: Sendable {
         self.networkMonitorDebounceInterval = networkMonitorDebounceInterval
         self.delegate = delegate
         networkMonitor = NetworkPathMonitor(debounceInterval: .seconds(networkMonitorDebounceInterval))
-        Task {
-            // start network path monitoring
-            await self.startWatchingNetworkPath()
-            // wait for events
-            await self.waitForWebSocketEvent()
-        }
     }
 
     /// Initializes a new `WebSocketClient` instance with a URL and additional parameters.
@@ -118,12 +118,20 @@ public final actor WebSocketClient: Sendable {
                   delegate: delegate)
     }
 
-    /// Updates the status of the WebSocket connection.
-    /// - Parameter status: The new status of the WebSocket connection.
-    private func updateStatus(_ status: WebSocketClientStatus) async {
-        guard status != self.status else { return }
-        self.status = status
-        await webSocketDidChangeStatus(status)
+    deinit {
+        // Cancel event listening task
+        eventListeningTask?.cancel()
+
+        // Stop network path monitoring and timers in detached tasks
+        let monitor = networkMonitor
+        let pingTimer = autoPingTimer
+        let reconnectTimerInstance = reconnectTimer
+
+        Task.detached {
+            await monitor.invalidate()
+            await pingTimer?.stop()
+            await reconnectTimerInstance?.stop()
+        }
     }
 }
 
@@ -146,8 +154,16 @@ public extension WebSocketClient {
             return false
         }
         debugLog("websocket start connecting \(urlRequest.url?.absoluteString ?? "")")
+
+        // Update status to connecting
         await updateStatus(.connecting)
+
+        // Prepare for running on first connect
+        await prepareRunning()
+
+        // Connect to the WebSocket server
         await webSocketBackend.connect(request: urlRequest)
+
         return true
     }
 
@@ -158,6 +174,15 @@ public extension WebSocketClient {
         await webSocketBackend.disconnect(closeCode: closeCode, reason: reason)
         await disableAutoPing()
         await destroyReconnectTimer(resetCount: true)
+    }
+
+    /// Disconnects the websocket and stops all running tasks and cleanup resources.
+    /// This method is useful when you want to completely stop the client without deallocating it.
+    /// - Parameter closeCode: The close code to use for the disconnection.
+    /// - Parameter reason: The reason for the disconnection.
+    func disconnectAndCleanup(closeCode: WebSocketClientCloseCode = .normalClosure, reason: String? = nil) async {
+        await disconnect(closeCode: closeCode, reason: reason)
+        await cleanupRunning()
     }
 
     /// Sends a WebSocket frame.
@@ -175,6 +200,50 @@ public extension WebSocketClient {
     /// - Parameter data: The data to include in the frame.
     func ping() async throws {
         try await send(.ping)
+    }
+}
+
+// MARK: - Private Methods
+
+private extension WebSocketClient {
+    /// Updates the status of the WebSocket connection.
+    /// - Parameter status: The new status of the WebSocket connection.
+    func updateStatus(_ status: WebSocketClientStatus) async {
+        guard status != self.status else { return }
+        self.status = status
+        await webSocketDidChangeStatus(status)
+    }
+
+    /// Prepares the client for running.
+    /// This is called on first connect() to ensure resources are only allocated when needed.
+    func prepareRunning() async {
+        // Check if client is already running
+        guard !isRunningPrepared else { return }
+        isRunningPrepared = true
+
+        // Start network path monitoring
+        await startWatchingNetworkPath()
+
+        // Start waiting for websocket events
+        eventListeningTask = Task { [weak self] in
+            guard let self else { return }
+            await waitForWebSocketEvent()
+        }
+    }
+
+    /// Stops all running tasks and releases resources.
+    /// Called when the client is being deallocated or explicitly stopped.
+    func cleanupRunning() async {
+        // Check if client is prepared for running
+        guard isRunningPrepared else { return }
+        isRunningPrepared = false
+
+        // Stop network path monitoring
+        await stopWatchingNetworkPath()
+
+        // Cancel event listening task
+        eventListeningTask?.cancel()
+        eventListeningTask = nil
     }
 }
 
@@ -277,7 +346,7 @@ private extension WebSocketClient {
 
 // MARK: - Watch Network
 
-extension WebSocketClient {
+private extension WebSocketClient {
     func startWatchingNetworkPath() async {
         await stopWatchingNetworkPath()
         await networkMonitor.pathOnChange { [weak self] path in
