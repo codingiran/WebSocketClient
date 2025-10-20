@@ -9,33 +9,57 @@ import Foundation
 import WebSocketClient
 
 public final class URLSessionWebSocketBackend: NSObject, @unchecked Sendable {
+    private var urlSession: URLSession?
     private var webSocketTask: URLSessionWebSocketTask?
 
     private var eventContinuation: AsyncStream<WebSocketClientEvent>.Continuation?
-
     private var onReceiveTask: Task<Void, Never>?
 
     override public init() {
         super.init()
     }
+
+    deinit {
+        invalidateUrlSession()
+        cancelWebSocketTask()
+        cancelOnReceiveTask()
+        clearContinuation()
+    }
 }
+
+// MARK: - WebSocketClientBackend Implementation
 
 extension URLSessionWebSocketBackend: WebSocketClientBackend {
     public func connect(request: URLRequest) async {
+        // cancel previous onReceiveTask
         cancelOnReceiveTask()
-        webSocketTask?.cancel()
-        webSocketTask = nil
-        let urlSessionWebSocketTask = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
-            .webSocketTask(with: request)
-        onReceiveTask = Task { await self.receiveWebSocket(urlSessionWebSocketTask) }
+
+        // invalidate previous url session
+        invalidateUrlSession()
+
+        // create new url session
+        let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+        urlSession = session
+
+        // cancel previous webSocketTask
+        cancelWebSocketTask()
+
+        // create new webSocketTask
+        let urlSessionWebSocketTask = session.webSocketTask(with: request)
+        onReceiveTask = Task { [weak self] in
+            guard let self else { return }
+            await receiveWebSocket(urlSessionWebSocketTask)
+        }
         urlSessionWebSocketTask.resume()
         webSocketTask = urlSessionWebSocketTask
     }
 
     public func disconnect(closeCode: WebSocketClientCloseCode, reason: String?) async {
-        guard let task = webSocketTask else { return }
-        task.cancel(with: .init(closeCode: closeCode), reason: reason?.data(using: .utf8))
-        webSocketTask = nil
+        // cancel webSocketTask
+        cancelWebSocketTask(closeCode: closeCode, reason: reason)
+
+        // invalidate url session to break the retain cycle
+        invalidateUrlSession()
     }
 
     public func write(frame: WebSocketClientFrame) async throws {
@@ -53,14 +77,16 @@ extension URLSessionWebSocketBackend: WebSocketClientBackend {
     }
 
     public var eventStream: AsyncStream<WebSocketClientEvent> {
-        AsyncStream { continuation in
-            continuation.onTermination = { _ in
-                self.clearContinuation()
+        AsyncStream { [weak self] continuation in
+            continuation.onTermination = { [weak self] _ in
+                self?.clearContinuation()
             }
-            self.eventContinuation = continuation
+            self?.eventContinuation = continuation
         }
     }
 }
+
+// MARK: - Receive WebSocket
 
 private extension URLSessionWebSocketBackend {
     func receiveWebSocket(_ webSocket: URLSessionWebSocketTask) async {
@@ -87,11 +113,9 @@ private extension URLSessionWebSocketBackend {
         guard let eventContinuation: AsyncStream<WebSocketClientEvent>.Continuation else { return }
         eventContinuation.yield(event)
     }
-
-    func clearContinuation() {
-        eventContinuation = nil
-    }
 }
+
+// MARK: - URLSessionWebSocketDelegate
 
 extension URLSessionWebSocketBackend: URLSessionWebSocketDelegate {
     public func urlSession(_: URLSession, webSocketTask _: URLSessionWebSocketTask, didOpenWithProtocol p: String?) {
@@ -108,9 +132,34 @@ extension URLSessionWebSocketBackend: URLSessionWebSocketDelegate {
         didReceive(event: .disconnected(reasonText, .init(closeCode: closeCode)))
         cancelOnReceiveTask()
     }
+}
 
-    private func cancelOnReceiveTask() {
-        onReceiveTask?.cancel()
-        onReceiveTask = nil
+// MARK: - Clean Up
+
+private extension URLSessionWebSocketBackend {
+    func clearContinuation() {
+        eventContinuation = nil
+    }
+
+    func cancelOnReceiveTask() {
+        guard let onReceiveTask else { return }
+        onReceiveTask.cancel()
+        self.onReceiveTask = nil
+    }
+
+    func invalidateUrlSession() {
+        guard let urlSession else { return }
+        urlSession.invalidateAndCancel()
+        self.urlSession = nil
+    }
+
+    func cancelWebSocketTask(closeCode: WebSocketClientCloseCode? = nil, reason: String? = nil) {
+        guard let webSocketTask else { return }
+        if let closeCode {
+            webSocketTask.cancel(with: .init(closeCode: closeCode), reason: reason?.data(using: .utf8))
+        } else {
+            webSocketTask.cancel()
+        }
+        self.webSocketTask = nil
     }
 }
